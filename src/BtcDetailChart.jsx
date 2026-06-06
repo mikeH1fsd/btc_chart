@@ -656,9 +656,9 @@ const BtcDetailChart = ({ onClose }) => {
              </div>
           </div>
 
-        <div id="tv-center-handle" style={{ position: 'absolute', height: '24px', left: 0, right: 0, transform: 'translateY(-50%)', cursor: 'move', pointerEvents: 'auto', zIndex: 30 }} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'center'; setDragging('center'); }} />
-        <div id="tv-tp-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'tp'; setDragging('tp'); }} />
-        <div id="tv-sl-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'sl'; setDragging('sl'); }} />
+        <div id="tv-center-handle" className="tv-handle" style={{ position: 'absolute', height: '24px', left: 0, right: 0, transform: 'translateY(-50%)', cursor: 'move', pointerEvents: 'auto', zIndex: 30 }} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'center'; setDragging('center'); }} />
+        <div id="tv-tp-handle" className="tv-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'tp'; setDragging('tp'); }} />
+        <div id="tv-sl-handle" className="tv-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'sl'; setDragging('sl'); }} />
       </div>
     );
   };
@@ -669,7 +669,7 @@ const BtcDetailChart = ({ onClose }) => {
       backgroundColor: '#0f172a',
       zIndex: 9999
     }}>
-      <div className="modal-header" style={{
+      <div className="modal-header modal-header-responsive" style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: '70px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '0 2rem', borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -680,7 +680,7 @@ const BtcDetailChart = ({ onClose }) => {
           <span className="timeframe-badge" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>1H Timeframe (5 Years)</span>
         </div>
         
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="modal-header-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {/* Position Tools */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', marginRight: '10px' }}>
             <span style={{color: '#94a3b8', fontSize: '0.8rem', fontWeight: 500}}>Lots:</span>
@@ -744,7 +744,7 @@ const BtcDetailChart = ({ onClose }) => {
         </div>
       </div>
       
-      <div style={{ position: 'absolute', top: '70px', left: 0, right: 0, bottom: 0 }}>
+      <div className="modal-body-responsive" style={{ position: 'absolute', top: '70px', left: 0, right: 0, bottom: 0 }}>
         {isLoading && (
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', zIndex: 10 }}>
             <div className="spinner" style={{ width: '40px', height: '40px', borderTopColor: '#f59e0b' }}></div>
