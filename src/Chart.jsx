@@ -47,7 +47,7 @@ const Chart = ({ onDataLoaded }) => {
         console.log(`Fetching from ${startStr} to ${endStr}`);
 
         const response = await fetch(
-          `/api/${startStr}..${endStr}?from=USD&to=HKD`
+          `https://api.frankfurter.app/${startStr}..${endStr}?from=USD&to=HKD`
         );
         
         if (!response.ok) {
