@@ -46,8 +46,9 @@ const Chart = ({ onDataLoaded }) => {
         const endStr = formatDate(endDate);
         console.log(`Fetching from ${startStr} to ${endStr}`);
 
+        const baseUrl = import.meta.env.DEV ? '/api' : 'https://api.frankfurter.app';
         const response = await fetch(
-          `https://api.frankfurter.app/${startStr}..${endStr}?from=USD&to=HKD`
+          `${baseUrl}/${startStr}..${endStr}?from=USD&to=HKD`
         );
         
         if (!response.ok) {
