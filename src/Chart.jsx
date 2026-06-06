@@ -46,7 +46,7 @@ const Chart = ({ onDataLoaded }) => {
         const endStr = formatDate(endDate);
         console.log(`Fetching from ${startStr} to ${endStr}`);
 
-        const baseUrl = import.meta.env.DEV ? '/api' : 'https://api.frankfurter.app';
+        const baseUrl = import.meta.env.DEV ? '/api' : 'https://api.frankfurter.dev/v1';
         const response = await fetch(
           `${baseUrl}/${startStr}..${endStr}?from=USD&to=HKD`
         );
