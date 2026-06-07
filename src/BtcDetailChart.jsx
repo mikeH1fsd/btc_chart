@@ -415,7 +415,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
       try {
         let initialCandles = 8760; // 1h 1y
         if (interval === '15m') initialCandles = 8640; // ~3 months
-        if (interval === '5m') initialCandles = 8640; // ~1 month
+        if (interval === '5m') initialCandles = 12000; // Need >9600 candles for EMA 200 (4H)
         
         const data = await fetchHistoricalKlines(initialCandles, Date.now(), (progress) => {
           setLoadingProgress(progress);
