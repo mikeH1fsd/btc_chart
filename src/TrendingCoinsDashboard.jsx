@@ -314,15 +314,15 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                   {coin.symbol}
                 </span>
               </div>
-              <div style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div className="coin-stats-mobile" style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 {coin.marketCap !== 'N/A' && <span>MCap: {coin.marketCap}</span>}
                 {coin.marketCap !== 'N/A' && <span>•</span>}
                 <span>Vol: {coin.volume}</span>
                 
                 {coinSentiment && !coinSentiment.error && (coinSentiment.up > 0 || coinSentiment.down > 0) && (
                   <>
-                    <span>•</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                    <span className="mobile-hide">•</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: '8px' }}>
                       <span>{coinSentiment.label}:</span>
                       <div style={{ width: '60px', height: '6px', background: '#ef4444', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
                         <div style={{ width: `${coinSentiment.up}%`, height: '100%', background: '#10b981' }}></div>
