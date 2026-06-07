@@ -106,7 +106,7 @@ const BtcChart = ({ onDataLoaded }) => {
     };
 
     fetchData().then(() => {
-      const interval = setInterval(fetchLivePrice, 5000);
+      const interval = setInterval(fetchLivePrice, 500);
       return () => clearInterval(interval);
     });
 

@@ -468,7 +468,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
       }
     };
 
-    const intervalId = setInterval(fetchLiveCandle, 1000);
+    const intervalId = setInterval(fetchLiveCandle, 500);
 
     let animationFrameId;
     const syncOverlay = () => {
