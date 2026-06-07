@@ -1,29 +1,201 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import YahooChart from './YahooChart';
+
+const SECTORS = [
+  { name: 'Ngân Hàng', icon: '🏦', tickers: ['VCB', 'BID', 'CTG', 'MBB'] },
+  { name: 'Bất Động Sản', icon: '🏢', tickers: ['VHM', 'VIC', 'VRE', 'KDH'] },
+  { name: 'Chứng Khoán', icon: '📈', tickers: ['SSI', 'VND', 'VCI', 'HCM'] },
+  { name: 'Thép - Vật Liệu', icon: '🏗️', tickers: ['HPG', 'HSG', 'NKG', 'HT1'] },
+  { name: 'Công Nghệ - Bán Lẻ', icon: '💻', tickers: ['FPT', 'MWG', 'PNJ', 'DGW'] },
+  { name: 'Thực Phẩm - Đồ Uống', icon: '🍷', tickers: ['VNM', 'MSN', 'SAB', 'KDC'] },
+  { name: 'Năng Lượng - Dầu Khí', icon: '⚡', tickers: ['GAS', 'PVD', 'PVS', 'POW'] }
+];
+
+const DEFAULT_TICKERS = SECTORS.flatMap(s => s.tickers);
+
+// Map sector colors
+const getSectorColor = (sectorName) => {
+  const colors = {
+    'Ngân Hàng': '#3b82f6',
+    'Bất Động Sản': '#8b5cf6',
+    'Chứng Khoán': '#f59e0b',
+    'Thép - Vật Liệu': '#94a3b8',
+    'Công Nghệ - Bán Lẻ': '#10b981',
+    'Thực Phẩm - Đồ Uống': '#ec4899',
+    'Năng Lượng - Dầu Khí': '#f97316'
+  };
+  return colors[sectorName] || '#ef4444';
+};
 
 const VnStockDashboard = ({ onClose }) => {
   const [tickerInput, setTickerInput] = useState('');
-  const [activeTicker, setActiveTicker] = useState(null);
-  
-  const initialStats = { current: '---', change: '---', changePercent: '---', isUp: true, highestAllTime: '---', dropFromHighAllTime: '---', highest5y: '---', dropFromHigh5y: '---' };
-  const [stats, setStats] = useState(initialStats);
+  const [searchTickers, setSearchTickers] = useState([]);
+  const [statsMap, setStatsMap] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  React.useEffect(() => {
-    // Clear stats immediately when ticker changes so old data is dropped
-    setStats(initialStats);
-  }, [activeTicker]);
+  // Initial fetch of prices
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const allTickersToFetch = [...new Set([...DEFAULT_TICKERS, ...searchTickers])];
+        
+        // Fetch all quotes in parallel using /v8/finance/chart
+        const promises = allTickersToFetch.map(async (t) => {
+          const symbol = t.includes('.') ? t : (t === 'PVS' ? 'PVS.HN' : `${t}.VN`);
+          try {
+             const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`);
+             if (!res.ok) return null;
+             const data = await res.json();
+             if (!data.chart.result || data.chart.result.length === 0) return null;
+             const result = data.chart.result[0];
+             const currentPrice = result.meta.regularMarketPrice;
+             const previousClose = result.meta.chartPreviousClose;
+             const change = currentPrice - previousClose;
+             const changePercent = (change / previousClose) * 100;
+             return { ticker: t, currentPrice, changePercent };
+          } catch(e) { return null; }
+        });
+        
+        const results = await Promise.all(promises);
+        
+        setStatsMap(prev => {
+          const newMap = { ...prev };
+          results.forEach(r => {
+             if (r && !newMap[r.ticker]) {
+                newMap[r.ticker] = {
+                  current: r.currentPrice.toFixed(2),
+                  changePercent: r.changePercent.toFixed(2),
+                  isUp: r.changePercent >= 0,
+                  isExpanded: false,
+                  highestAllTime: null,
+                  dropFromHighAllTime: null,
+                  highest5y: null,
+                  dropFromHigh5y: null
+                };
+             }
+          });
+          return newMap;
+        });
+        setIsLoading(false);
+      } catch (err) {
+        console.error(err);
+        setIsLoading(false);
+      }
+    };
+    fetchPrices();
+  }, [searchTickers]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (!tickerInput.trim()) return;
-    setActiveTicker(tickerInput.trim().toUpperCase());
+    const symbol = tickerInput.trim().toUpperCase();
+    if (!symbol) return;
+    
+    if (!DEFAULT_TICKERS.includes(symbol) && !searchTickers.includes(symbol)) {
+      setSearchTickers([symbol, ...searchTickers]);
+    } else {
+       // if it already exists, just expand it (if it has stats)
+       handleDataLoaded(symbol, { isExpanded: true });
+    }
+    setTickerInput('');
   };
 
-  const handleDataLoaded = useCallback((data) => {
-    setStats(data);
+  const handleDataLoaded = useCallback((ticker, data) => {
+    setStatsMap(prev => ({
+      ...prev,
+      [ticker]: { ...prev[ticker], ...data }
+    }));
   }, []);
 
-  const currentSymbol = activeTicker ? (activeTicker.includes('.') ? activeTicker : `${activeTicker}.VN`) : '';
+  const renderCard = (ticker, sectorName, sectorColor) => {
+    const stats = statsMap[ticker] || {};
+    return (
+      <div 
+        key={ticker}
+        className="glass-card"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: stats.isExpanded ? '600px' : 'auto',
+          padding: '1.5rem',
+          borderTop: `4px solid ${sectorColor}`,
+          transition: 'height 0.3s ease',
+          background: 'rgba(30, 41, 59, 0.7)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700 }}>{ticker}</h3>
+            <div style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px' }}>{sectorName}</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 600 }}>{stats.current ? `${stats.current}` : '---'}</div>
+            {stats.changePercent && (
+              <div style={{ fontSize: '0.9rem', color: stats.isUp ? '#34d399' : '#f87171' }}>
+                {stats.isUp ? '▲' : '▼'} {Math.abs(stats.changePercent)}%
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {stats.isExpanded && (
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', marginTop: '1rem', animation: 'fadeIn 0.5s' }}>
+            <YahooChart 
+              ticker={ticker === 'PVS' ? 'PVS.HN' : `${ticker}.VN`} 
+              label={`Biểu đồ giá ${ticker}`} 
+              color={sectorColor} 
+              interval="1wk"
+              range="max"
+              onDataLoaded={(s) => handleDataLoaded(ticker, s)} 
+            />
+          </div>
+        )}
+
+        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {stats.highestAllTime && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Đỉnh Mọi Thời Đại</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{stats.highestAllTime}</span>
+                  <span style={{ color: '#ef4444', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                    ▼ {Math.abs(stats.dropFromHighAllTime)}%
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Đỉnh 5 Năm</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{stats.highest5y}</span>
+                  <span style={{ color: '#ef4444', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                    ▼ {Math.abs(stats.dropFromHigh5y)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <button 
+            onClick={() => handleDataLoaded(ticker, { isExpanded: !stats.isExpanded })}
+            style={{
+              padding: '10px',
+              background: stats.isExpanded ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${stats.isExpanded ? 'rgba(239, 68, 68, 0.5)' : 'rgba(255,255,255,0.1)'}`,
+              color: stats.isExpanded ? '#fca5a5' : '#e2e8f0',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={e => e.currentTarget.style.background = stats.isExpanded ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255,255,255,0.1)'}
+            onMouseOut={e => e.currentTarget.style.background = stats.isExpanded ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)'}
+          >
+            {stats.isExpanded ? 'Đóng Biểu Đồ' : 'Mở Biểu Đồ Lịch Sử'}
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="dashboard-fullscreen" style={{
@@ -45,9 +217,6 @@ const VnStockDashboard = ({ onClose }) => {
           <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '1.8rem' }}>🇻🇳</span> Chứng Khoán Việt Nam
           </h2>
-          <span className="timeframe-badge" style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
-            1W (Toàn thời gian)
-          </span>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -55,7 +224,7 @@ const VnStockDashboard = ({ onClose }) => {
             <div style={{ position: 'relative', width: '250px' }}>
               <input
                 type="text"
-                placeholder="Nhập mã CK (VD: FPT)..."
+                placeholder="Nhập mã CK (VD: VHM)..."
                 value={tickerInput}
                 onChange={(e) => setTickerInput(e.target.value)}
                 style={{
@@ -75,11 +244,8 @@ const VnStockDashboard = ({ onClose }) => {
               padding: '0 16px', background: '#ef4444', color: 'white',
               border: 'none', borderRadius: '20px', fontWeight: 'bold',
               cursor: 'pointer', transition: 'background 0.2s', fontSize: '0.9rem'
-            }}
-            onMouseOver={e => e.currentTarget.style.background = '#dc2626'}
-            onMouseOut={e => e.currentTarget.style.background = '#ef4444'}
-            >
-              Xem
+            }}>
+              Tìm Kiếm
             </button>
           </form>
 
@@ -88,109 +254,43 @@ const VnStockDashboard = ({ onClose }) => {
             width: '36px', height: '36px', borderRadius: '50%',
             cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center',
             fontSize: '16px', transition: 'all 0.2s'
-          }}
-          onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-          onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-          >
+          }}>
             ✕
           </button>
         </div>
       </div>
 
-      <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-        <div style={{ marginBottom: '2rem', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Gợi ý nhanh:</span>
-          {['FPT', 'HPG', 'SSI', 'VCB', 'VNM', 'VHM', 'MWG'].map(ticker => (
-            <button
-              key={ticker}
-              onClick={() => { setTickerInput(ticker); setActiveTicker(ticker); }}
-              style={{
-                background: activeTicker === ticker ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)', 
-                border: `1px solid ${activeTicker === ticker ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
-                color: activeTicker === ticker ? '#ef4444' : '#cbd5e1', 
-                padding: '4px 12px', borderRadius: '12px',
-                fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s',
-                fontWeight: activeTicker === ticker ? 'bold' : 'normal'
-              }}
-              onMouseOver={e => { if(activeTicker !== ticker) { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; } }}
-              onMouseOut={e => { if(activeTicker !== ticker) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; } }}
-            >
-              {ticker}
-            </button>
-          ))}
-        </div>
-
-        {/* Similar layout to App.jsx dashboard cards */}
-        {activeTicker ? (
-          <main className="dashboard" style={{ transform: 'none', opacity: 1, position: 'relative' }}>
-            <aside 
-              className="glass-card stats-container" 
-              style={{ 
-                borderColor: 'rgba(239, 68, 68, 0.3)',
-              }}
-            >
-              <div className="stat-item">
-                <span className="stat-label">Cổ phiếu {activeTicker}</span>
-                <div className="stat-value">
-                  {stats.current} <span className="stat-currency">VND</span>
-                </div>
-                {stats.current !== '---' && (
-                  <div>
-                    <span 
-                      className={`trend ${stats.isUp ? 'up' : 'down'}`} 
-                      style={
-                        stats.isUp 
-                        ? { color: '#34d399', background: 'rgba(52, 211, 153, 0.1)' } 
-                        : {}
-                      }
-                    >
-                      {stats.isUp ? '▲' : '▼'} {Math.abs(stats.change)} ({Math.abs(stats.changePercent)}%)
-                    </span>
-                    <span style={{ marginLeft: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      So với kỳ trước
-                    </span>
-                  </div>
-                )}
-
-                {stats.highestAllTime !== '---' && (
-                  <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--card-border)' }}>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Đỉnh Mọi Thời Đại (ATH)</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '1.1rem', color: '#e2e8f0' }}>{stats.highestAllTime}</span>
-                      <span style={{ fontSize: '0.8rem', color: '#f87171' }}>{stats.dropFromHighAllTime}% từ đỉnh</span>
-                    </div>
-                    
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '12px', marginBottom: '4px' }}>Đỉnh 5 Năm Gần Nhất</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '1.1rem', color: '#e2e8f0' }}>{stats.highest5y}</span>
-                      <span style={{ fontSize: '0.8rem', color: '#f87171' }}>{stats.dropFromHigh5y}% từ đỉnh</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </aside>
-
-            <section className="glass-card chart-container" style={{ borderColor: 'rgba(239, 68, 68, 0.1)' }}>
-              <div className="chart-wrapper">
-                <YahooChart 
-                  ticker={currentSymbol} 
-                  label={`Biểu đồ giá ${activeTicker}`} 
-                  color="#ef4444" 
-                  interval="1wk"
-                  range="max"
-                  onDataLoaded={handleDataLoaded}
-                />
-              </div>
-            </section>
-          </main>
+      <div style={{ padding: '2rem', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
+        {isLoading && Object.keys(statsMap).length === 0 ? (
+           <div className="loading" style={{ height: '50vh' }}>
+             <div className="spinner" style={{ borderTopColor: '#ef4444' }}></div>
+             <p>Đang tải dữ liệu thị trường...</p>
+           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 2rem', color: '#64748b', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px', background: 'rgba(0,0,0,0.2)' }}>
-            <span style={{ fontSize: '3rem', marginBottom: '1rem' }}>📈</span>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#94a3b8', fontSize: '1.2rem' }}>Chưa chọn mã chứng khoán</h3>
-            <p style={{ margin: 0, maxWidth: '400px' }}>Vui lòng nhập mã cổ phiếu vào ô tìm kiếm phía trên hoặc chọn từ danh sách gợi ý để xem biểu đồ chi tiết.</p>
-          </div>
-        )}
+          <>
+            {searchTickers.length > 0 && (
+              <div style={{ marginBottom: '3rem' }}>
+                <h2 style={{ color: '#f8fafc', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span>🔍</span> Kết Quả Tìm Kiếm
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', gap: '20px' }}>
+                  {searchTickers.map(ticker => renderCard(ticker, 'Tùy Chọn', '#ef4444'))}
+                </div>
+              </div>
+            )}
 
+            {SECTORS.map((sector) => (
+              <div key={sector.name} style={{ marginBottom: '3rem' }}>
+                <h2 style={{ color: '#f8fafc', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+                  <span>{sector.icon}</span> Nhóm {sector.name}
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', gap: '20px' }}>
+                  {sector.tickers.map(ticker => renderCard(ticker, sector.name, getSectorColor(sector.name)))}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
