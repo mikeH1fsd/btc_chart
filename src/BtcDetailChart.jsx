@@ -21,7 +21,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
   
   const [showEma25, setShowEma25] = useState(true);
   const [showEma200, setShowEma200] = useState(true);
-  const [showEma800, setShowEma800] = useState(true);
+  const [showEma25_1H, setShowEma25_1H] = useState(true);
+  const [showEma200_1H, setShowEma200_1H] = useState(true);
+  const [showEma200_4H, setShowEma200_4H] = useState(true);
   const [showBg, setShowBg] = useState(true);
 
   const [position, setPosition] = useState(null);
@@ -40,8 +42,17 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
   const candleDataRef = useRef([]);
   const ema25SeriesRef = useRef(null);
   const ema200SeriesRef = useRef(null);
-  const ema800SeriesRef = useRef(null);
+  const ema25_1HSeriesRef = useRef(null);
+  const ema200_1HSeriesRef = useRef(null);
+  const ema200_4HSeriesRef = useRef(null);
   const bgSeriesRef = useRef(null);
+
+  const getMultiplier = (targetMinutes) => {
+    let currentMinutes = 60;
+    if (interval === '15m') currentMinutes = 15;
+    if (interval === '5m') currentMinutes = 5;
+    return Math.max(1, targetMinutes / currentMinutes);
+  };
 
   const getEmaArray = (data, period) => {
     if (!data || data.length < period) return [];
@@ -366,7 +377,31 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     });
     ema200SeriesRef.current = ema200Series;
 
-    const ema800Series = chart.addSeries(LineSeries, {
+    const ema25_1HSeries = chart.addSeries(LineSeries, {
+      color: '#facc15', // yellow
+      lineWidth: 2,
+      lineStyle: 2, // dashed
+      crosshairMarkerVisible: true,
+      lastValueVisible: true,
+      priceLineVisible: false,
+      priceScaleId: 'right',
+      visible: interval !== '1h',
+    });
+    ema25_1HSeriesRef.current = ema25_1HSeries;
+
+    const ema200_1HSeries = chart.addSeries(LineSeries, {
+      color: '#fb923c', // orange
+      lineWidth: 2,
+      lineStyle: 2, // dashed
+      crosshairMarkerVisible: true,
+      lastValueVisible: true,
+      priceLineVisible: false,
+      priceScaleId: 'right',
+      visible: interval !== '1h',
+    });
+    ema200_1HSeriesRef.current = ema200_1HSeries;
+
+    const ema200_4HSeries = chart.addSeries(LineSeries, {
       color: '#a855f7', // purple
       lineWidth: 2,
       crosshairMarkerVisible: true,
@@ -374,7 +409,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
       priceLineVisible: false,
       priceScaleId: 'right',
     });
-    ema800SeriesRef.current = ema800Series;
+    ema200_4HSeriesRef.current = ema200_4HSeries;
 
     const loadInitialData = async () => {
       try {
@@ -398,7 +433,11 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
           
           if (ema25SeriesRef.current) ema25SeriesRef.current.setData(getEmaArray(data, 25));
           if (ema200SeriesRef.current) ema200SeriesRef.current.setData(getEmaArray(data, 200));
-          if (ema800SeriesRef.current) ema800SeriesRef.current.setData(getEmaArray(data, 800));
+          if (interval !== '1h') {
+             if (ema25_1HSeriesRef.current) ema25_1HSeriesRef.current.setData(getEmaArray(data, 25 * getMultiplier(60)));
+             if (ema200_1HSeriesRef.current) ema200_1HSeriesRef.current.setData(getEmaArray(data, 200 * getMultiplier(60)));
+          }
+          if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.setData(getEmaArray(data, 200 * getMultiplier(240)));
           
           candleDataRef.current = data;
           oldestTimeRef.current = data[0].time * 1000;
@@ -461,8 +500,16 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
         const ema200Arr = getEmaArray(sliceData, 200);
         if (ema200Arr.length > 0) ema200SeriesRef.current.update(ema200Arr[ema200Arr.length - 1]);
 
-        const ema800Arr = getEmaArray(sliceData, 800);
-        if (ema800Arr.length > 0) ema800SeriesRef.current.update(ema800Arr[ema800Arr.length - 1]);
+        if (interval !== '1h') {
+           const ema25_1HArr = getEmaArray(sliceData, 25 * getMultiplier(60));
+           if (ema25_1HArr.length > 0) ema25_1HSeriesRef.current.update(ema25_1HArr[ema25_1HArr.length - 1]);
+           
+           const ema200_1HArr = getEmaArray(sliceData, 200 * getMultiplier(60));
+           if (ema200_1HArr.length > 0) ema200_1HSeriesRef.current.update(ema200_1HArr[ema200_1HArr.length - 1]);
+        }
+
+        const ema200_4HArr = getEmaArray(sliceData, 200 * getMultiplier(240));
+        if (ema200_4HArr.length > 0) ema200_4HSeriesRef.current.update(ema200_4HArr[ema200_4HArr.length - 1]);
       } catch (err) {
         // Silently ignore real-time polling errors
       }
@@ -606,8 +653,16 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
   }, [showEma200]);
 
   useEffect(() => {
-    if (ema800SeriesRef.current) ema800SeriesRef.current.applyOptions({ visible: showEma800 });
-  }, [showEma800]);
+    if (ema25_1HSeriesRef.current) ema25_1HSeriesRef.current.applyOptions({ visible: showEma25_1H && interval !== '1h' });
+  }, [showEma25_1H, interval]);
+
+  useEffect(() => {
+    if (ema200_1HSeriesRef.current) ema200_1HSeriesRef.current.applyOptions({ visible: showEma200_1H && interval !== '1h' });
+  }, [showEma200_1H, interval]);
+
+  useEffect(() => {
+    if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.applyOptions({ visible: showEma200_4H });
+  }, [showEma200_4H]);
 
   useEffect(() => {
     if (bgSeriesRef.current) bgSeriesRef.current.applyOptions({ visible: showBg });
@@ -645,7 +700,11 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
             
             if (ema25SeriesRef.current) ema25SeriesRef.current.setData(getEmaArray(combinedData, 25));
             if (ema200SeriesRef.current) ema200SeriesRef.current.setData(getEmaArray(combinedData, 200));
-            if (ema800SeriesRef.current) ema800SeriesRef.current.setData(getEmaArray(combinedData, 800));
+            if (interval !== '1h') {
+               if (ema25_1HSeriesRef.current) ema25_1HSeriesRef.current.setData(getEmaArray(combinedData, 25 * getMultiplier(60)));
+               if (ema200_1HSeriesRef.current) ema200_1HSeriesRef.current.setData(getEmaArray(combinedData, 200 * getMultiplier(60)));
+            }
+            if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.setData(getEmaArray(combinedData, 200 * getMultiplier(240)));
             
             candleDataRef.current = combinedData;
             oldestTimeRef.current = combinedData[0].time * 1000;
@@ -758,12 +817,19 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
               <button onClick={() => setPosition(null)} style={{ background: 'transparent', border: '1px solid #64748b', color: '#94a3b8', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', cursor: 'pointer', marginLeft: '4px' }}>âœ•</button>
             )}
           </div>
-          {[
-            { label: 'EMA 25', state: showEma25, setter: setShowEma25, color: '#22c55e' },
-            { label: 'EMA 200', state: showEma200, setter: setShowEma200, color: '#3b82f6' },
-            { label: 'EMA 200 (4H)', state: showEma800, setter: setShowEma800, color: '#a855f7' },
-            { label: 'OB/OS Zones', state: showBg, setter: setShowBg, color: '#ef4444' }
-          ].map((item, idx) => (
+          {(() => {
+            const btns = [
+              { label: 'EMA 25', state: showEma25, setter: setShowEma25, color: '#22c55e' },
+              { label: 'EMA 200', state: showEma200, setter: setShowEma200, color: '#3b82f6' }
+            ];
+            if (interval !== '1h') {
+              btns.push({ label: 'EMA 25 (1H)', state: showEma25_1H, setter: setShowEma25_1H, color: '#facc15' });
+              btns.push({ label: 'EMA 200 (1H)', state: showEma200_1H, setter: setShowEma200_1H, color: '#fb923c' });
+            }
+            btns.push({ label: 'EMA 200 (4H)', state: showEma200_4H, setter: setShowEma200_4H, color: '#a855f7' });
+            btns.push({ label: 'OB/OS Zones', state: showBg, setter: setShowBg, color: '#ef4444' });
+            
+            return btns.map((item, idx) => (
             <button
               key={idx}
               onClick={() => item.setter(!item.state)}
@@ -781,7 +847,8 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
             >
               {item.label}
             </button>
-          ))}
+            ));
+          })()}
           
           {!isExtended && (
             <button 
