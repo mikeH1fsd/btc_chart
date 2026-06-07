@@ -67,9 +67,9 @@ function App() {
       case 'btc':
         return <BtcChart onDataLoaded={handleDataLoadedBTC} />;
       case 'us100':
-        return <YahooChart ticker="^NDX" label="US100" color="#8b5cf6" interval="1mo" onDataLoaded={handleDataLoadedUS100} />;
+        return <YahooChart ticker="^NDX" label="US100" color="#8b5cf6" interval="1wk" onDataLoaded={handleDataLoadedUS100} />;
       case 'xauusd':
-        return <YahooChart ticker="GC=F" label="Gold" color="#eab308" interval="1mo" onDataLoaded={handleDataLoadedXAUUSD} />;
+        return <YahooChart ticker="GC=F" label="Gold" color="#eab308" interval="1wk" onDataLoaded={handleDataLoadedXAUUSD} />;
       default:
         return null;
     }

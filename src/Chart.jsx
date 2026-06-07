@@ -64,30 +64,37 @@ const Chart = ({ onDataLoaded }) => {
         const dailyLabels = Object.keys(data.rates);
         const dailyValues = Object.values(data.rates).map((rate) => rate.HKD);
 
+        const getWeekNumber = (d) => {
+            const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay()||7));
+            const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+            const weekNo = Math.ceil(( ( (date - yearStart) / 86400000) + 1)/7);
+            return date.getUTCFullYear() + "-W" + String(weekNo).padStart(2, '0');
+        };
+
         const labels = [];
         const values = [];
-        let currentMonthStr = '';
-        let lastValueInMonth = 0;
-        let lastLabelInMonth = '';
+        let currentGroupKey = '';
+        let lastValueInGroup = 0;
+        let lastLabelInGroup = '';
         
         for (let i = 0; i < dailyLabels.length; i++) {
            const dateStr = dailyLabels[i];
-           // Extract YYYY-MM
-           const monthKey = dateStr.substring(0, 7);
+           const groupKey = getWeekNumber(new Date(dateStr));
            
-           if (currentMonthStr !== monthKey) {
-               if (currentMonthStr !== '') {
-                   labels.push(lastLabelInMonth);
-                   values.push(lastValueInMonth);
+           if (currentGroupKey !== groupKey) {
+               if (currentGroupKey !== '') {
+                   labels.push(lastLabelInGroup);
+                   values.push(lastValueInGroup);
                }
-               currentMonthStr = monthKey;
+               currentGroupKey = groupKey;
            }
-           lastLabelInMonth = dateStr;
-           lastValueInMonth = dailyValues[i];
+           lastLabelInGroup = dateStr;
+           lastValueInGroup = dailyValues[i];
         }
-        if (currentMonthStr !== '') {
-           labels.push(lastLabelInMonth);
-           values.push(lastValueInMonth);
+        if (currentGroupKey !== '') {
+           labels.push(lastLabelInGroup);
+           values.push(lastValueInGroup);
         }
 
         const currentRate = values[values.length - 1];
