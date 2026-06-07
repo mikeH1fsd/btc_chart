@@ -267,4 +267,4 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
   return <Line ref={chartRef} data={chartData} options={options} />;
 };
 
-export default YahooChart;
+export default React.memo(YahooChart);

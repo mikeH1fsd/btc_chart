@@ -217,4 +217,4 @@ const Chart = ({ onDataLoaded }) => {
   return <Line ref={chartRef} data={chartData} options={options} />;
 };
 
-export default Chart;
+export default React.memo(Chart);

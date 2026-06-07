@@ -205,4 +205,4 @@ const BtcChart = ({ onDataLoaded }) => {
   return <Line ref={chartRef} data={chartData} options={options} />;
 };
 
-export default BtcChart;
+export default React.memo(BtcChart);
