@@ -47,27 +47,44 @@ const TrendingCoinsDashboard = ({ onClose }) => {
       for (let i = 0; i < trendingCoins.length; i++) {
         if (!isMounted) break;
         const coin = trendingCoins[i];
-        try {
-          // Stagger requests to avoid CoinGecko rate limit
-          await new Promise(res => setTimeout(res, 500));
-          
-          const response = await fetch(
-            `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`
-          );
-          if (!response.ok) continue;
-          
-          const data = await response.json();
-          if (isMounted) {
-            setSentiments(prev => ({
-              ...prev,
-              [coin.id]: {
-                up: data.sentiment_votes_up_percentage || 0,
-                down: data.sentiment_votes_down_percentage || 0
-              }
-            }));
+        
+        let success = false;
+        let attempts = 0;
+        
+        while (!success && attempts < 2) {
+          try {
+            attempts++;
+            // Stagger requests: 800ms between attempts
+            await new Promise(res => setTimeout(res, 800));
+            
+            const url = `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`;
+            // First attempt direct, second attempt proxy
+            const fetchUrl = (attempts === 1 || import.meta.env.DEV) ? url : `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+            
+            const response = await fetch(fetchUrl);
+            
+            if (response.status === 429) {
+              // Rate limited, wait extra before next attempt
+              await new Promise(res => setTimeout(res, 2000));
+              continue;
+            }
+            
+            if (!response.ok) continue;
+            
+            const data = await response.json();
+            if (isMounted) {
+              setSentiments(prev => ({
+                ...prev,
+                [coin.id]: {
+                  up: data.sentiment_votes_up_percentage || 0,
+                  down: data.sentiment_votes_down_percentage || 0
+                }
+              }));
+            }
+            success = true;
+          } catch (err) {
+            console.error(`Error fetching sentiment for ${coin.id}`, err);
           }
-        } catch (err) {
-          console.error(`Error fetching sentiment for ${coin.id}`, err);
         }
       }
     };
