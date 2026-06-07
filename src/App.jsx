@@ -27,7 +27,7 @@ const getBorderColor = (hex, alpha) => {
 function App() {
   const [charts, setCharts] = useState(INITIAL_CHARTS);
   const [stats, setStats] = useState({});
-  const [showBtcDetail, setShowBtcDetail] = useState(false);
+  const [btcDetailConfig, setBtcDetailConfig] = useState(null);
   const [showUs100Detail, setShowUs100Detail] = useState(false);
 
   const handleDragEnd = (result) => {
@@ -65,8 +65,8 @@ function App() {
     }
   };
 
-  if (showBtcDetail) {
-    return <BtcDetailChart onClose={() => setShowBtcDetail(false)} />;
+  if (btcDetailConfig) {
+    return <BtcDetailChart onClose={() => setBtcDetailConfig(null)} interval={btcDetailConfig.interval} years={btcDetailConfig.years} />;
   }
   if (showUs100Detail) {
     return <Us100DetailChart onClose={() => setShowUs100Detail(false)} />;
@@ -166,9 +166,9 @@ function App() {
                           <div className="chart-header">
                             <h2 className="chart-title">{chart.historyTitle}</h2>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                              {(chart.id === 'btc' || chart.id === 'us100') && (
+                              {chart.id === 'us100' && (
                                 <button 
-                                  onClick={() => chart.id === 'btc' ? setShowBtcDetail(true) : setShowUs100Detail(true)}
+                                  onClick={() => setShowUs100Detail(true)}
                                   style={{ 
                                     background: 'transparent', border: `1px solid ${chart.color}`, color: chart.color, 
                                     padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem',
@@ -179,6 +179,29 @@ function App() {
                                 >
                                   Xem chi tiết H1
                                 </button>
+                              )}
+                              {chart.id === 'btc' && (
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                  {[
+                                    { label: 'H1 (5Y)', interval: '1h', years: 5 },
+                                    { label: '15m (3Y)', interval: '15m', years: 3 },
+                                    { label: '5m (1Y)', interval: '5m', years: 1 }
+                                  ].map((btn, idx) => (
+                                    <button 
+                                      key={idx}
+                                      onClick={() => setBtcDetailConfig({ interval: btn.interval, years: btn.years })}
+                                      style={{ 
+                                        background: 'transparent', border: `1px solid ${chart.color}`, color: chart.color, 
+                                        padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem',
+                                        transition: 'all 0.2s', fontWeight: '500'
+                                      }}
+                                      onMouseOver={(e) => { e.currentTarget.style.background = getBorderColor(chart.color, 0.1) }}
+                                      onMouseOut={(e) => { e.currentTarget.style.background = 'transparent' }}
+                                    >
+                                      {btn.label}
+                                    </button>
+                                  ))}
+                                </div>
                               )}
                               <div 
                                 className="timeframe-badge" 

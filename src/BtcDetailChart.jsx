@@ -8,7 +8,7 @@ const hexToRgb = (hex) => {
   return `${r}, ${g}, ${b}`;
 };
 
-const BtcDetailChart = ({ onClose }) => {
+const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
   const chartContainerRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const seriesRef = useRef(null);
@@ -62,26 +62,24 @@ const BtcDetailChart = ({ onClose }) => {
     return emaData;
   };
 
-  const get4HRsiArray = (data, period = 14) => {
+  const getHigherTimeframeRsiArray = (data, period = 14, multiplier = 4) => {
     if (!data || data.length === 0) return [];
     
-    const closes4H = [];
+    const closesHTF = [];
     const rsiData = [];
     
     for (let i = 0; i < data.length; i++) {
-        const date = new Date(data[i].time * 1000);
-        const hour = date.getUTCHours();
-        if (hour % 4 === 3 || i === data.length - 1) { 
-           closes4H.push({ time: data[i].time, close: data[i].close, index1H: i });
+        if (i % multiplier === multiplier - 1 || i === data.length - 1) { 
+           closesHTF.push({ time: data[i].time, close: data[i].close, indexBase: i });
         }
     }
     
-    if (closes4H.length <= period) return [];
+    if (closesHTF.length <= period) return [];
     
     let gains = 0;
     let losses = 0;
     for (let i = 1; i <= period; i++) {
-      const change = closes4H[i].close - closes4H[i - 1].close;
+      const change = closesHTF[i].close - closesHTF[i - 1].close;
       if (change >= 0) gains += change;
       else losses -= change;
     }
@@ -95,9 +93,9 @@ const BtcDetailChart = ({ onClose }) => {
     let currentRsiIdx = period;
     
     for (let i = 0; i < data.length; i++) {
-       if (currentRsiIdx < closes4H.length - 1 && i > closes4H[currentRsiIdx].index1H) {
+       if (currentRsiIdx < closesHTF.length - 1 && i > closesHTF[currentRsiIdx].indexBase) {
            currentRsiIdx++;
-           const change = closes4H[currentRsiIdx].close - closes4H[currentRsiIdx - 1].close;
+           const change = closesHTF[currentRsiIdx].close - closesHTF[currentRsiIdx - 1].close;
            let gain = change >= 0 ? change : 0;
            let loss = change < 0 ? -change : 0;
            
@@ -108,7 +106,7 @@ const BtcDetailChart = ({ onClose }) => {
            rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
        }
        
-       if (i >= closes4H[period].index1H) {
+       if (i >= closesHTF[period].indexBase) {
            rsiData.push({ time: data[i].time, value: rsi });
        }
     }
@@ -153,40 +151,40 @@ const BtcDetailChart = ({ onClose }) => {
     return rsiData;
   };
 
-    const applySignalsAndBackground = (data, rsiData1H, rsiData4H) => {
+    const applySignalsAndBackground = (data, rsiDataBase, rsiDataHTF) => {
       const bgData = [];
       
-      if (!data || !rsiData1H || !rsiData4H || data.length === 0) return { bgData };
+      if (!data || !rsiDataBase || !rsiDataHTF || data.length === 0) return { bgData };
       
-      const rsiMap1H = {};
-      for (let i = 0; i < rsiData1H.length; i++) {
-        rsiMap1H[rsiData1H[i].time] = rsiData1H[i].value;
+      const rsiMapBase = {};
+      for (let i = 0; i < rsiDataBase.length; i++) {
+        rsiMapBase[rsiDataBase[i].time] = rsiDataBase[i].value;
       }
       
-      const rsiMap4H = {};
-      for (let i = 0; i < rsiData4H.length; i++) {
-        rsiMap4H[rsiData4H[i].time] = rsiData4H[i].value;
+      const rsiMapHTF = {};
+      for (let i = 0; i < rsiDataHTF.length; i++) {
+        rsiMapHTF[rsiDataHTF[i].time] = rsiDataHTF[i].value;
       }
       
       for (let i = 1; i < data.length; i++) {
         const current = data[i];
-        const currentRsi1H = rsiMap1H[current.time];
-        const currentRsi4H = rsiMap4H[current.time];
+        const currentRsiBase = rsiMapBase[current.time];
+        const currentRsiHTF = rsiMapHTF[current.time];
         
         let color = 'transparent';
         
-        const ob1H = currentRsi1H >= 70;
-        const os1H = currentRsi1H <= 30;
-        const ob4H = currentRsi4H >= 70;
-        const os4H = currentRsi4H <= 30;
+        const obBase = currentRsiBase >= 70;
+        const osBase = currentRsiBase <= 30;
+        const obHTF = currentRsiHTF >= 70;
+        const osHTF = currentRsiHTF <= 30;
         
-        if (ob1H && ob4H) {
+        if (obBase && obHTF) {
            color = 'rgba(220, 38, 38, 0.4)'; // Dark Red
-        } else if (ob1H || ob4H) {
+        } else if (obBase || obHTF) {
            color = 'rgba(239, 68, 68, 0.15)'; // Light Red
-        } else if (os1H && os4H) {
+        } else if (osBase && osHTF) {
            color = 'rgba(22, 163, 74, 0.4)'; // Dark Green
-        } else if (os1H || os4H) {
+        } else if (osBase || osHTF) {
            color = 'rgba(34, 197, 94, 0.15)'; // Light Green
         }
         
@@ -213,20 +211,29 @@ const BtcDetailChart = ({ onClose }) => {
     });
   };
 
-  const fetch5YearsKlines = async (onProgress) => {
+  const fetchHistoricalKlines = async (onProgress) => {
     try {
       let allData = [];
       let currentEndTime = Date.now();
       const limit = 1000;
-      const targetCandles = 43800; // ~5 years
+      
+      let targetCandles = 43800; // default 1h 5y
+      if (interval === '15m') targetCandles = 105120; // 3 years
+      if (interval === '5m') targetCandles = 105120; // 1 year
+      
       const batches = Math.ceil(targetCandles / (limit * 3));
       
       for (let i = 0; i < batches; i++) {
         const promises = [];
         for (let j = 0; j < 3; j++) {
-          let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=${limit}&endTime=${currentEndTime}`;
+          let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}&endTime=${currentEndTime}`;
           promises.push(fetch(url).then(res => res.json()));
-          currentEndTime -= limit * 60 * 60 * 1000;
+          
+          let msPerCandle = 60 * 60 * 1000;
+          if (interval === '15m') msPerCandle = 15 * 60 * 1000;
+          if (interval === '5m') msPerCandle = 5 * 60 * 1000;
+          
+          currentEndTime -= limit * msPerCandle;
         }
         
         const results = await Promise.all(promises);
@@ -372,15 +379,15 @@ const BtcDetailChart = ({ onClose }) => {
 
     const loadInitialData = async () => {
       try {
-        const data = await fetch5YearsKlines((progress) => {
+        const data = await fetchHistoricalKlines((progress) => {
           setLoadingProgress(progress);
         });
         
         if (data.length > 0) {
-          const rsiArray1H = getRsiArray(data, 14);
-          const rsiArray4H = get4HRsiArray(data, 14);
+          const rsiArrayBase = getRsiArray(data, 14);
+          const rsiArrayHTF = getHigherTimeframeRsiArray(data, 14, 4); // Use 4x HTF consistently
           
-          const { bgData } = applySignalsAndBackground(data, rsiArray1H, rsiArray4H);
+          const { bgData } = applySignalsAndBackground(data, rsiArrayBase, rsiArrayHTF);
           if (bgSeriesRef.current) bgSeriesRef.current.setData(bgData);
           if (seriesRef.current) {
             seriesRef.current.setData(data);
@@ -405,7 +412,7 @@ const BtcDetailChart = ({ onClose }) => {
     // Fetch latest candle every 2 seconds for real-time updates
     const fetchLiveCandle = async () => {
       try {
-        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1`);
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=1`);
         if (!res.ok) return;
         const data = await res.json();
         const d = data[0];
@@ -435,9 +442,9 @@ const BtcDetailChart = ({ onClose }) => {
         // Performance Fix: Only calculate indicators on the last 500 candles instead of 43,000!
         const sliceData = currentData.slice(-500);
         
-        const rsiArr1H = getRsiArray(sliceData, 14);
-        const rsiArr4H = get4HRsiArray(sliceData, 14);
-        const { bgData } = applySignalsAndBackground(sliceData, rsiArr1H, rsiArr4H);
+        const rsiArrBase = getRsiArray(sliceData, 14);
+        const rsiArrHTF = getHigherTimeframeRsiArray(sliceData, 14, 4);
+        const { bgData } = applySignalsAndBackground(sliceData, rsiArrBase, rsiArrHTF);
         
         if (bgData.length > 0) {
             const lastBg = bgData[bgData.length - 1];
@@ -677,7 +684,9 @@ const BtcDetailChart = ({ onClose }) => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.5rem' }}>Bitcoin / USDT</h2>
-          <span className="timeframe-badge" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>1H Timeframe (5 Years)</span>
+          <span className="timeframe-badge" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
+            {interval === '1h' ? '1H (5 Years)' : interval === '15m' ? '15m (3 Years)' : '5m (1 Year)'}
+          </span>
         </div>
         
         <div className="modal-header-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -748,7 +757,7 @@ const BtcDetailChart = ({ onClose }) => {
         {isLoading && (
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', zIndex: 10 }}>
             <div className="spinner" style={{ width: '40px', height: '40px', borderTopColor: '#f59e0b' }}></div>
-            <div style={{ color: '#94a3b8' }}>Fetching 5 Years of Data ({loadingProgress}%)...</div>
+            <div style={{ color: '#94a3b8' }}>Fetching {years} Years of Data ({loadingProgress}%)...</div>
             <div style={{ width: '200px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
               <div style={{ width: `${loadingProgress}%`, height: '100%', background: '#f59e0b', transition: 'width 0.2s' }}></div>
             </div>
