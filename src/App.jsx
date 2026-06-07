@@ -7,6 +7,7 @@ import YahooChart from './YahooChart';
 import BtcDetailChart from './BtcDetailChart';
 import Us100DetailChart from './Us100DetailChart';
 import TopCoinsDashboard from './TopCoinsDashboard';
+import TrendingCoinsDashboard from './TrendingCoinsDashboard';
 
 const INITIAL_CHARTS = [
   { id: 'usdhkd', title: 'USD / HKD', currency: 'HKD', source: 'Frankfurter API', color: '#38bdf8', historyTitle: 'USD/HKD Exchange Rate History', timeframe: '10 Years' },
@@ -32,6 +33,7 @@ function App() {
   const [btcDetailConfig, setBtcDetailConfig] = useState(null);
   const [showUs100Detail, setShowUs100Detail] = useState(false);
   const [showTopCoins, setShowTopCoins] = useState(false);
+  const [showTrendingCoins, setShowTrendingCoins] = useState(false);
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
@@ -81,6 +83,10 @@ function App() {
     return <TopCoinsDashboard onClose={() => setShowTopCoins(false)} />;
   }
 
+  if (showTrendingCoins) {
+    return <TrendingCoinsDashboard onClose={() => setShowTrendingCoins(false)} />;
+  }
+
   return (
     <div className="app-container">
       <header className="header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -88,28 +94,53 @@ function App() {
           <h1 className="title" style={{ fontSize: '2.5rem', margin: 0 }}>Global Markets Dashboard</h1>
           <p className="subtitle" style={{ marginTop: '0.5rem' }}>Real-time Analytics - Drag & Drop to Reorder</p>
         </div>
-        <button 
-          onClick={() => setShowTopCoins(true)}
-          style={{
-            padding: '10px 20px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            border: 'none',
-            color: 'white',
-            borderRadius: '24px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '1rem',
-            boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-          onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 92, 246, 0.4)'; }}
-          onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(139, 92, 246, 0.3)'; }}
-        >
-          <span>🚀</span> View Top 15 Crypto
-        </button>
+        <div style={{ display: 'flex', gap: '15px' }}>
+          <button 
+            onClick={() => setShowTrendingCoins(true)}
+            style={{
+              padding: '10px 20px',
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+              border: 'none',
+              color: 'white',
+              borderRadius: '24px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '1rem',
+              boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 158, 11, 0.4)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(245, 158, 11, 0.3)'; }}
+          >
+            <span>🔥</span> Top 10 Trending
+          </button>
+          
+          <button 
+            onClick={() => setShowTopCoins(true)}
+            style={{
+              padding: '10px 20px',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+              border: 'none',
+              color: 'white',
+              borderRadius: '24px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '1rem',
+              boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 92, 246, 0.4)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(139, 92, 246, 0.3)'; }}
+          >
+            <span>🚀</span> View Top 15 Crypto
+          </button>
+        </div>
       </header>
 
       <DragDropContext onDragEnd={handleDragEnd}>
