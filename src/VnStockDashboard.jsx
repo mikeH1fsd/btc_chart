@@ -49,11 +49,11 @@ const VnStockDashboard = ({ onClose }) => {
           try {
              let res;
              try {
-               res = await fetch(`${baseUrl}/v8/finance/chart/${symbol}?interval=1wk&range=max`);
+               res = await fetch(`${baseUrl}/v8/finance/chart/${symbol}?interval=1d&range=max`);
                if (!res.ok) throw new Error("Primary fetch failed");
              } catch (err) {
                if (!import.meta.env.DEV) {
-                 const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1wk&range=max`)}`;
+                 const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=max`)}`;
                  res = await fetch(fallbackUrl);
                } else {
                  throw err;
@@ -65,17 +65,21 @@ const VnStockDashboard = ({ onClose }) => {
              if (!data.chart.result || data.chart.result.length === 0) return null;
              const result = data.chart.result[0];
              const currentPrice = result.meta.regularMarketPrice;
-             const previousClose = result.meta.chartPreviousClose;
+
+             // Extract quotes
+             const quote = result.indicators?.quote?.[0] || {};
+             const highs = quote.high || [];
+             const closes = quote.close || [];
+             
+             const validCloses = closes.filter(c => c !== null);
+             const previousClose = validCloses.length > 1 ? validCloses[validCloses.length - 2] : currentPrice;
+             
              const change = currentPrice - previousClose;
              const changePercent = previousClose ? (change / previousClose) * 100 : 0;
 
-             // Extract high prices
-             const quote = result.indicators?.quote?.[0] || {};
-             const highs = quote.high || [];
              const validHighs = highs.filter(h => h !== null);
-             
              const highestAllTime = validHighs.length > 0 ? Math.max(...validHighs) : currentPrice;
-             const pointsIn5Years = 260; // 5 years of weekly data
+             const pointsIn5Years = 1300; // ~5 years of daily data (260 * 5)
              const highs5y = validHighs.slice(Math.max(validHighs.length - pointsIn5Years, 0));
              const highest5y = highs5y.length > 0 ? Math.max(...highs5y) : currentPrice;
 
