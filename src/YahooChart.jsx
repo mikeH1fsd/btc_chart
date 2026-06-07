@@ -114,8 +114,15 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
       const change = currentRate - previousRate;
       const changePercent = previousRate ? (change / previousRate) * 100 : 0;
 
-      const highestPrice = Math.max(...values);
-      const dropFromHighPercent = highestPrice ? ((currentRate - highestPrice) / highestPrice) * 100 : 0;
+      const highestPriceAllTime = Math.max(...values);
+      const dropFromHighAllTimePercent = highestPriceAllTime ? ((currentRate - highestPriceAllTime) / highestPriceAllTime) * 100 : 0;
+
+      // 5 years of weekly data = 260 weeks, or 5 years of daily data = 1250 days.
+      // We will slice the array to get the last 5 years based on the interval.
+      const pointsIn5Years = interval === '1wk' ? 260 : 1250;
+      const values5y = values.slice(Math.max(values.length - pointsIn5Years, 0));
+      const highestPrice5y = Math.max(...values5y);
+      const dropFromHigh5yPercent = highestPrice5y ? ((currentRate - highestPrice5y) / highestPrice5y) * 100 : 0;
 
       if (onDataLoadedRef.current) {
           onDataLoadedRef.current({
@@ -123,8 +130,13 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
             change: change.toFixed(2),
             changePercent: changePercent.toFixed(2),
             isUp: change >= 0,
-            highest: highestPrice.toFixed(2),
-            dropFromHigh: dropFromHighPercent.toFixed(2),
+            highestAllTime: highestPriceAllTime.toFixed(2),
+            dropFromHighAllTime: dropFromHighAllTimePercent.toFixed(2),
+            highest5y: highestPrice5y.toFixed(2),
+            dropFromHigh5y: dropFromHigh5yPercent.toFixed(2),
+            // Legacy mapping for existing dashboards that only expect 'highest'
+            highest: highestPriceAllTime.toFixed(2),
+            dropFromHigh: dropFromHighAllTimePercent.toFixed(2),
           });
       }
     };

@@ -4,7 +4,7 @@ import YahooChart from './YahooChart';
 const VnStockDashboard = ({ onClose }) => {
   const [tickerInput, setTickerInput] = useState('');
   const [activeTicker, setActiveTicker] = useState(null);
-  const [stats, setStats] = useState({ current: '---', change: '---', changePercent: '---', isUp: true, highest: '---', dropFromHigh: '---' });
+  const [stats, setStats] = useState({ current: '---', change: '---', changePercent: '---', isUp: true, highestAllTime: '---', dropFromHighAllTime: '---', highest5y: '---', dropFromHigh5y: '---' });
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -39,7 +39,7 @@ const VnStockDashboard = ({ onClose }) => {
             <span style={{ fontSize: '1.8rem' }}>🇻🇳</span> Chứng Khoán Việt Nam
           </h2>
           <span className="timeframe-badge" style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
-            1D (5 Years)
+            1W (Toàn thời gian)
           </span>
         </div>
         
@@ -145,12 +145,18 @@ const VnStockDashboard = ({ onClose }) => {
                   </div>
                 )}
 
-                {stats.highest !== '---' && (
+                {stats.highestAllTime !== '---' && (
                   <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--card-border)' }}>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Đỉnh Cao Nhất (5 Năm)</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Đỉnh Mọi Thời Đại (ATH)</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '1.1rem', color: '#e2e8f0' }}>{stats.highest}</span>
-                      <span style={{ fontSize: '0.8rem', color: '#f87171' }}>{stats.dropFromHigh}% từ đỉnh</span>
+                      <span style={{ fontWeight: 600, fontSize: '1.1rem', color: '#e2e8f0' }}>{stats.highestAllTime}</span>
+                      <span style={{ fontSize: '0.8rem', color: '#f87171' }}>{stats.dropFromHighAllTime}% từ đỉnh</span>
+                    </div>
+                    
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '12px', marginBottom: '4px' }}>Đỉnh 5 Năm Gần Nhất</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                      <span style={{ fontWeight: 600, fontSize: '1.1rem', color: '#e2e8f0' }}>{stats.highest5y}</span>
+                      <span style={{ fontSize: '0.8rem', color: '#f87171' }}>{stats.dropFromHigh5y}% từ đỉnh</span>
                     </div>
                   </div>
                 )}
@@ -163,8 +169,8 @@ const VnStockDashboard = ({ onClose }) => {
                   ticker={currentSymbol} 
                   label={`Biểu đồ giá ${activeTicker}`} 
                   color="#ef4444" 
-                  interval="1d"
-                  range="5y"
+                  interval="1wk"
+                  range="max"
                   onDataLoaded={handleDataLoaded}
                 />
               </div>
