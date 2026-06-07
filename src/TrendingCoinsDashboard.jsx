@@ -111,62 +111,68 @@ const TrendingCoinsDashboard = ({ onClose }) => {
     if (dataSource !== 'coingecko' || trendingCoins.length === 0) return;
 
     let isMounted = true;
-    const fetchSentiments = async () => {
-      for (let i = 0; i < trendingCoins.length; i++) {
-        if (!isMounted) break;
-        const coin = trendingCoins[i];
-        
-        let success = false;
-        let attempts = 0;
-        
-        while (!success && attempts < 3) {
-          try {
-            attempts++;
-            await new Promise(res => setTimeout(res, 1500));
-            
-            const url = `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`;
-            
-            let fetchUrl = url;
-            if (attempts === 2) {
-              fetchUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-            } else if (attempts === 3) {
-              fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const fetchSentiments = () => {
+      trendingCoins.forEach((coin, index) => {
+        // Stagger the START of each coin's fetch by 500ms
+        setTimeout(async () => {
+          if (!isMounted) return;
+          
+          let success = false;
+          let attempts = 0;
+          
+          while (!success && attempts < 3) {
+            try {
+              attempts++;
+              
+              const url = `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`;
+              
+              let fetchUrl = url;
+              if (attempts === 2) {
+                fetchUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+              } else if (attempts === 3) {
+                fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+              }
+              
+              const response = await fetch(fetchUrl);
+              
+              if (response.status === 429) {
+                await new Promise(res => setTimeout(res, 2000)); // Extra wait if rate limited
+                continue;
+              }
+              
+              if (!response.ok) {
+                 // Wait a bit before retry even for other errors
+                 await new Promise(res => setTimeout(res, 1000));
+                 continue;
+              }
+              
+              const data = await response.json();
+              if (isMounted) {
+                setSentiments(prev => ({
+                  ...prev,
+                  [coin.id]: {
+                    up: data.sentiment_votes_up_percentage || 0,
+                    down: data.sentiment_votes_down_percentage || 0,
+                    error: false,
+                    label: 'Vote Tích cực/Tiêu cực'
+                  }
+                }));
+              }
+              success = true;
+            } catch (err) {
+              console.error(`Error fetching sentiment for ${coin.id} on attempt ${attempts}`, err);
+              await new Promise(res => setTimeout(res, 1000));
             }
-            
-            const response = await fetch(fetchUrl);
-            
-            if (response.status === 429) {
-              await new Promise(res => setTimeout(res, 2500)); // Extra wait if rate limited
-              continue;
-            }
-            
-            if (!response.ok) continue;
-            
-            const data = await response.json();
-            if (isMounted) {
-              setSentiments(prev => ({
-                ...prev,
-                [coin.id]: {
-                  up: data.sentiment_votes_up_percentage || 0,
-                  down: data.sentiment_votes_down_percentage || 0,
-                  error: false,
-                  label: 'Vote Tích cực/Tiêu cực'
-                }
-              }));
-            }
-            success = true;
-          } catch (err) {
-            console.error(`Error fetching sentiment for ${coin.id} on attempt ${attempts}`, err);
           }
-        }
-        
-        if (!success && isMounted) {
-          setSentiments(prev => ({
-            ...prev,
-            [coin.id]: { up: 0, down: 0, error: true, label: 'Lỗi API' }
-          }));
-        }
-      }
+          
+          if (!success && isMounted) {
+            setSentiments(prev => ({
+              ...prev,
+              [coin.id]: { up: 0, down: 0, error: true, label: 'Lỗi API' }
+            }));
+          }
+        }, index * 400); // 400ms stagger between each coin's initial start
+      });
     };
 
     fetchSentiments();
