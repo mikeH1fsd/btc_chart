@@ -120,7 +120,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           let success = false;
           let attempts = 0;
           
-          while (!success && attempts < 3) {
+          while (!success && attempts < 4) {
             try {
               attempts++;
               
@@ -131,6 +131,8 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                 fetchUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
               } else if (attempts === 3) {
                 fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+              } else if (attempts === 4) {
+                fetchUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
               }
               
               const response = await fetch(fetchUrl);
