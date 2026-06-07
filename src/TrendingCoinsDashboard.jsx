@@ -54,17 +54,16 @@ const TrendingCoinsDashboard = ({ onClose }) => {
         while (!success && attempts < 2) {
           try {
             attempts++;
-            // Stagger requests: 800ms between attempts
-            await new Promise(res => setTimeout(res, 800));
+            // Stagger requests: 1000ms between attempts
+            await new Promise(res => setTimeout(res, 1000));
             
             const url = `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`;
-            // First attempt direct, second attempt proxy
-            const fetchUrl = (attempts === 1 || import.meta.env.DEV) ? url : `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+            // Use direct first, allorigins second (even on local)
+            const fetchUrl = attempts === 1 ? url : `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
             
             const response = await fetch(fetchUrl);
             
             if (response.status === 429) {
-              // Rate limited, wait extra before next attempt
               await new Promise(res => setTimeout(res, 2000));
               continue;
             }
@@ -77,7 +76,8 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                 ...prev,
                 [coin.id]: {
                   up: data.sentiment_votes_up_percentage || 0,
-                  down: data.sentiment_votes_down_percentage || 0
+                  down: data.sentiment_votes_down_percentage || 0,
+                  error: false
                 }
               }));
             }
@@ -85,6 +85,14 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           } catch (err) {
             console.error(`Error fetching sentiment for ${coin.id}`, err);
           }
+        }
+        
+        // If it still failed after 2 attempts, mark as error so it stops spinning
+        if (!success && isMounted) {
+          setSentiments(prev => ({
+            ...prev,
+            [coin.id]: { up: 0, down: 0, error: true }
+          }));
         }
       }
     };
@@ -190,7 +198,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                 <span>•</span>
                 <span>Vol: {coin.volume || 'N/A'}</span>
                 
-                {coinSentiment && (coinSentiment.up > 0 || coinSentiment.down > 0) && (
+                {coinSentiment && !coinSentiment.error && (coinSentiment.up > 0 || coinSentiment.down > 0) && (
                   <>
                     <span>•</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
@@ -203,7 +211,13 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                     </div>
                   </>
                 )}
-                {(!coinSentiment || (coinSentiment.up === 0 && coinSentiment.down === 0)) && (
+                {coinSentiment && coinSentiment.error && (
+                  <>
+                    <span>•</span>
+                    <span style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#ef4444' }}>API quá tải, thử lại sau</span>
+                  </>
+                )}
+                {(!coinSentiment || (!coinSentiment.error && coinSentiment.up === 0 && coinSentiment.down === 0)) && (
                   <>
                     <span>•</span>
                     <span style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#64748b' }}>Đang phân tích tâm lý...</span>
