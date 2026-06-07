@@ -1,19 +1,36 @@
 import React, { useState, useEffect } from 'react';
 
+// Simple in-memory cache to prevent refetching when navigating back
+let memoryCache = {
+  coingecko: null,
+  binance: null,
+  sentiments: {}
+};
+
 const TrendingCoinsDashboard = ({ onClose }) => {
   const [dataSource, setDataSource] = useState('coingecko'); // 'coingecko' | 'binance'
-  const [trendingCoins, setTrendingCoins] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [trendingCoins, setTrendingCoins] = useState(memoryCache.coingecko || []);
+  const [isLoading, setIsLoading] = useState(!memoryCache.coingecko);
   const [error, setError] = useState(null);
-  const [sentiments, setSentiments] = useState({});
+  const [sentiments, setSentiments] = useState(memoryCache.sentiments);
 
   useEffect(() => {
     let isMounted = true;
+    if (dataSource === 'coingecko' && memoryCache.coingecko) {
+      setTrendingCoins(memoryCache.coingecko);
+      setIsLoading(false);
+      return;
+    }
+    if (dataSource === 'binance' && memoryCache.binance) {
+      setTrendingCoins(memoryCache.binance);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setTrendingCoins([]);
-    setSentiments({});
-
+    
     const fetchCoinGecko = async () => {
       try {
         const response = await fetch('https://api.coingecko.com/api/v3/search/trending');
@@ -33,7 +50,10 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           volume: coin.item.data.total_volume
         }));
 
-        if (isMounted) setTrendingCoins(top10Gecko);
+        if (isMounted) {
+          setTrendingCoins(top10Gecko);
+          memoryCache.coingecko = top10Gecko;
+        }
       } catch (err) {
         console.error('Error fetching trending coins:', err);
         if (isMounted) setError(err.message);
@@ -88,7 +108,10 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           };
         });
 
-        if (isMounted) setTrendingCoins(top10);
+        if (isMounted) {
+          setTrendingCoins(top10);
+          memoryCache.binance = top10;
+        }
       } catch (err) {
          console.error(err);
          if (isMounted) setError(err.message);
@@ -113,6 +136,9 @@ const TrendingCoinsDashboard = ({ onClose }) => {
     let isMounted = true;
     const fetchSentiments = () => {
       trendingCoins.forEach((coin, index) => {
+        // Skip if already in cache
+        if (memoryCache.sentiments[coin.id]) return;
+
         // Stagger the START of each coin's fetch by 500ms
         setTimeout(async () => {
           if (!isMounted) return;
@@ -149,15 +175,18 @@ const TrendingCoinsDashboard = ({ onClose }) => {
               }
               
               const data = await response.json();
+              const newSentiment = {
+                up: data.sentiment_votes_up_percentage || 0,
+                down: data.sentiment_votes_down_percentage || 0,
+                error: false,
+                label: 'Vote Tích cực/Tiêu cực'
+              };
+              memoryCache.sentiments[coin.id] = newSentiment;
+              
               if (isMounted) {
                 setSentiments(prev => ({
                   ...prev,
-                  [coin.id]: {
-                    up: data.sentiment_votes_up_percentage || 0,
-                    down: data.sentiment_votes_down_percentage || 0,
-                    error: false,
-                    label: 'Vote Tích cực/Tiêu cực'
-                  }
+                  [coin.id]: newSentiment
                 }));
               }
               success = true;
@@ -167,11 +196,15 @@ const TrendingCoinsDashboard = ({ onClose }) => {
             }
           }
           
-          if (!success && isMounted) {
-            setSentiments(prev => ({
-              ...prev,
-              [coin.id]: { up: 0, down: 0, error: true, label: 'Lỗi API' }
-            }));
+          if (!success) {
+            const errSentiment = { up: 0, down: 0, error: true, label: 'Lỗi API' };
+            memoryCache.sentiments[coin.id] = errSentiment;
+            if (isMounted) {
+              setSentiments(prev => ({
+                ...prev,
+                [coin.id]: errSentiment
+              }));
+            }
           }
         }, index * 400); // 400ms stagger between each coin's initial start
       });
