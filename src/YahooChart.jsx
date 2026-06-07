@@ -33,15 +33,15 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
           
         let response;
         try {
-          // Fetch 5 years of daily data
+          // Fetch 5 years of weekly data
           response = await fetch(
-            `${baseUrl}/v8/finance/chart/${ticker}?interval=1d&range=5y`
+            `${baseUrl}/v8/finance/chart/${ticker}?interval=1wk&range=5y`
           );
           if (!response.ok) throw new Error("Primary fetch failed");
         } catch (err) {
           if (!import.meta.env.DEV) {
             console.log("Fallback to allorigins proxy...");
-            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5y`)}`;
+            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=5y`)}`;
             response = await fetch(fallbackUrl);
           } else {
             throw err;
