@@ -27,10 +27,26 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
       try {
         console.log(`Fetching ${label} data from Yahoo Finance...`);
 
-        // Fetch 5 years of daily data
-        const response = await fetch(
-          `/yahoo/v8/finance/chart/${ticker}?interval=1d&range=5y`
-        );
+        const baseUrl = import.meta.env.DEV 
+          ? '/yahoo' 
+          : 'https://corsproxy.io/?https://query1.finance.yahoo.com';
+          
+        let response;
+        try {
+          // Fetch 5 years of daily data
+          response = await fetch(
+            `${baseUrl}/v8/finance/chart/${ticker}?interval=1d&range=5y`
+          );
+          if (!response.ok) throw new Error("Primary fetch failed");
+        } catch (err) {
+          if (!import.meta.env.DEV) {
+            console.log("Fallback to allorigins proxy...");
+            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5y`)}`;
+            response = await fetch(fallbackUrl);
+          } else {
+            throw err;
+          }
+        }
         
         if (!response.ok) {
            throw new Error(`API error: ${response.status} ${response.statusText}`);
