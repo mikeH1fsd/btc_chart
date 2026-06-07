@@ -119,18 +119,24 @@ const TrendingCoinsDashboard = ({ onClose }) => {
         let success = false;
         let attempts = 0;
         
-        while (!success && attempts < 2) {
+        while (!success && attempts < 3) {
           try {
             attempts++;
-            await new Promise(res => setTimeout(res, 1000));
+            await new Promise(res => setTimeout(res, 1500));
             
             const url = `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`;
-            const fetchUrl = attempts === 1 ? url : `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+            
+            let fetchUrl = url;
+            if (attempts === 2) {
+              fetchUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            } else if (attempts === 3) {
+              fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+            }
             
             const response = await fetch(fetchUrl);
             
             if (response.status === 429) {
-              await new Promise(res => setTimeout(res, 2000));
+              await new Promise(res => setTimeout(res, 2500)); // Extra wait if rate limited
               continue;
             }
             
@@ -150,7 +156,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
             }
             success = true;
           } catch (err) {
-            console.error(`Error fetching sentiment for ${coin.id}`, err);
+            console.error(`Error fetching sentiment for ${coin.id} on attempt ${attempts}`, err);
           }
         }
         
