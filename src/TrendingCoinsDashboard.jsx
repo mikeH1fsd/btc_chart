@@ -4,6 +4,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
   const [trendingCoins, setTrendingCoins] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sentiments, setSentiments] = useState({});
 
   useEffect(() => {
     const fetchTrending = async () => {
@@ -19,7 +20,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           name: coin.item.name,
           symbol: coin.item.symbol,
           image: coin.item.large,
-          price: coin.item.data.price, // Usually in USD or formatted string
+          price: coin.item.data.price,
           priceChange24h: coin.item.data.price_change_percentage_24h?.usd || 0,
           marketCap: coin.item.data.market_cap,
           volume: coin.item.data.total_volume
@@ -36,6 +37,45 @@ const TrendingCoinsDashboard = ({ onClose }) => {
 
     fetchTrending();
   }, []);
+
+  // Fetch sentiment for each coin staggering by 500ms
+  useEffect(() => {
+    if (trendingCoins.length === 0) return;
+
+    let isMounted = true;
+    const fetchSentiments = async () => {
+      for (let i = 0; i < trendingCoins.length; i++) {
+        if (!isMounted) break;
+        const coin = trendingCoins[i];
+        try {
+          // Stagger requests to avoid CoinGecko rate limit
+          await new Promise(res => setTimeout(res, 500));
+          
+          const response = await fetch(
+            `https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`
+          );
+          if (!response.ok) continue;
+          
+          const data = await response.json();
+          if (isMounted) {
+            setSentiments(prev => ({
+              ...prev,
+              [coin.id]: {
+                up: data.sentiment_votes_up_percentage || 0,
+                down: data.sentiment_votes_down_percentage || 0
+              }
+            }));
+          }
+        } catch (err) {
+          console.error(`Error fetching sentiment for ${coin.id}`, err);
+        }
+      }
+    };
+
+    fetchSentiments();
+
+    return () => { isMounted = false; };
+  }, [trendingCoins]);
 
   if (isLoading) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: '#e2e8f0' }}>Đang tải danh sách Trending 24h từ CoinGecko...</div>;
@@ -87,7 +127,9 @@ const TrendingCoinsDashboard = ({ onClose }) => {
         flexDirection: 'column', 
         gap: '15px' 
       }}>
-        {trendingCoins.map((coin) => (
+        {trendingCoins.map((coin) => {
+          const coinSentiment = sentiments[coin.id];
+          return (
           <div 
             key={coin.id}
             className="glass-card"
@@ -126,8 +168,30 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                   {coin.symbol}
                 </span>
               </div>
-              <div style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '5px' }}>
-                MCap: {coin.marketCap || 'N/A'} • Vol: {coin.volume || 'N/A'}
+              <div style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <span>MCap: {coin.marketCap || 'N/A'}</span>
+                <span>•</span>
+                <span>Vol: {coin.volume || 'N/A'}</span>
+                
+                {coinSentiment && (coinSentiment.up > 0 || coinSentiment.down > 0) && (
+                  <>
+                    <span>•</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                      <span>Tâm lý:</span>
+                      <div style={{ width: '60px', height: '6px', background: '#ef4444', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+                        <div style={{ width: `${coinSentiment.up}%`, height: '100%', background: '#10b981' }}></div>
+                      </div>
+                      <span style={{ color: '#10b981' }}>{coinSentiment.up}%</span>
+                      <span style={{ color: '#ef4444' }}>{coinSentiment.down}%</span>
+                    </div>
+                  </>
+                )}
+                {(!coinSentiment || (coinSentiment.up === 0 && coinSentiment.down === 0)) && (
+                  <>
+                    <span>•</span>
+                    <span style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#64748b' }}>Đang phân tích tâm lý...</span>
+                  </>
+                )}
               </div>
             </div>
             
@@ -145,7 +209,8 @@ const TrendingCoinsDashboard = ({ onClose }) => {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
