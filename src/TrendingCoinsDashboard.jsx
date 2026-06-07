@@ -146,7 +146,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           let success = false;
           let attempts = 0;
           
-          while (!success && attempts < 4) {
+          while (!success && attempts < 5) {
             try {
               attempts++;
               
@@ -159,6 +159,8 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                 fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
               } else if (attempts === 4) {
                 fetchUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+              } else if (attempts === 5) {
+                fetchUrl = `https://thingproxy.freeboard.io/fetch/${url}`;
               }
               
               const response = await fetch(fetchUrl);
