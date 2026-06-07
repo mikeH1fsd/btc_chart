@@ -5,10 +5,12 @@ import Chart from './Chart';
 import BtcChart from './BtcChart';
 import YahooChart from './YahooChart';
 import BtcDetailChart from './BtcDetailChart';
+import Us100DetailChart from './Us100DetailChart';
 
 const INITIAL_CHARTS = [
   { id: 'usdhkd', title: 'USD / HKD', currency: 'HKD', source: 'Frankfurter API', color: '#38bdf8', historyTitle: 'USD/HKD Exchange Rate History', timeframe: '10 Years' },
-  { id: 'btc', title: 'Bitcoin / USDT', currency: 'USDT', source: 'Binance API', color: '#f59e0b', historyTitle: 'Bitcoin Price History', timeframe: '10 Years' }
+  { id: 'btc', title: 'Bitcoin / USDT', currency: 'USDT', source: 'Binance API', color: '#f59e0b', historyTitle: 'Bitcoin Price History', timeframe: '10 Years' },
+  { id: 'us100', title: 'US100 / USD', currency: 'USD', source: 'Yahoo Finance', color: '#8b5cf6', historyTitle: 'NASDAQ 100 Index History', timeframe: '10 Years' }
 ];
 
 // Helper to convert hex to rgba for card border
@@ -26,6 +28,7 @@ function App() {
   const [charts, setCharts] = useState(INITIAL_CHARTS);
   const [stats, setStats] = useState({});
   const [showBtcDetail, setShowBtcDetail] = useState(false);
+  const [showUs100Detail, setShowUs100Detail] = useState(false);
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
@@ -47,6 +50,7 @@ function App() {
 
   const handleDataLoadedHKD = useCallback((data) => handleDataLoaded('usdhkd', data), [handleDataLoaded]);
   const handleDataLoadedBTC = useCallback((data) => handleDataLoaded('btc', data), [handleDataLoaded]);
+  const handleDataLoadedUS100 = useCallback((data) => handleDataLoaded('us100', data), [handleDataLoaded]);
 
   const renderChartComponent = (id) => {
     switch (id) {
@@ -54,6 +58,8 @@ function App() {
         return <Chart onDataLoaded={handleDataLoadedHKD} />;
       case 'btc':
         return <BtcChart onDataLoaded={handleDataLoadedBTC} />;
+      case 'us100':
+        return <YahooChart ticker="^NDX" label="US100" color="#8b5cf6" onDataLoaded={handleDataLoadedUS100} />;
       default:
         return null;
     }
@@ -61,6 +67,9 @@ function App() {
 
   if (showBtcDetail) {
     return <BtcDetailChart onClose={() => setShowBtcDetail(false)} />;
+  }
+  if (showUs100Detail) {
+    return <Us100DetailChart onClose={() => setShowUs100Detail(false)} />;
   }
 
   return (
@@ -157,15 +166,15 @@ function App() {
                           <div className="chart-header">
                             <h2 className="chart-title">{chart.historyTitle}</h2>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                              {chart.id === 'btc' && (
+                              {(chart.id === 'btc' || chart.id === 'us100') && (
                                 <button 
-                                  onClick={() => setShowBtcDetail(true)}
+                                  onClick={() => chart.id === 'btc' ? setShowBtcDetail(true) : setShowUs100Detail(true)}
                                   style={{ 
-                                    background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', 
+                                    background: 'transparent', border: `1px solid ${chart.color}`, color: chart.color, 
                                     padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem',
                                     transition: 'all 0.2s', fontWeight: '500'
                                   }}
-                                  onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)' }}
+                                  onMouseOver={(e) => { e.currentTarget.style.background = getBorderColor(chart.color, 0.1) }}
                                   onMouseOut={(e) => { e.currentTarget.style.background = 'transparent' }}
                                 >
                                   Xem chi tiết H1

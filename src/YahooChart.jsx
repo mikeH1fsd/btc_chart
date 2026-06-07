@@ -22,9 +22,9 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
       try {
         console.log(`Fetching ${label} data from Yahoo Finance...`);
 
-        // Fetch max 2 years of hourly data (Yahoo limit for 1h is 730 days)
+        // Fetch 10 years of daily data
         const response = await fetch(
-          `/yahoo/v8/finance/chart/${ticker}?interval=1h&range=730d`
+          `/yahoo/v8/finance/chart/${ticker}?interval=1d&range=10y`
         );
         
         if (!response.ok) {
@@ -47,7 +47,7 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
             if (closes[i] !== null && closes[i] !== undefined) {
                 const date = new Date(timestamps[i] * 1000);
                 validData.push({
-                    dateStr: `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`,
+                    dateStr: `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
                     price: closes[i]
                 });
             }
