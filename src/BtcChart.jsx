@@ -69,11 +69,16 @@ const BtcChart = ({ onDataLoaded }) => {
       const change = currentRate - previousRate;
       const changePercent = previousRate ? (change / previousRate) * 100 : 0;
 
+      const highestPrice = Math.max(...values);
+      const dropFromHighPercent = highestPrice ? ((currentRate - highestPrice) / highestPrice) * 100 : 0;
+
       onDataLoaded({
         current: currentRate.toFixed(2),
         change: change.toFixed(2),
         changePercent: changePercent.toFixed(2),
         isUp: change >= 0,
+        highest: highestPrice.toFixed(2),
+        dropFromHigh: dropFromHighPercent.toFixed(2),
       });
     };
 

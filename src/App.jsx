@@ -149,6 +149,26 @@ function App() {
                                 </span>
                               </div>
                             )}
+
+                            {currentStat && currentStat.highest && (
+                              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--card-border)' }}>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Highest Point (Data Range)</div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                                    {chart.currency === 'USDT' || chart.currency === 'USD' ? '$' : ''}{currentStat.highest}
+                                  </span>
+                                  <span style={{ 
+                                    color: '#ef4444', 
+                                    fontSize: '0.85rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '2px'
+                                  }}>
+                                    ▼ {Math.abs(currentStat.dropFromHigh)}%
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                           
                           <div style={{ marginTop: 'auto', borderTop: '1px solid var(--card-border)', paddingTop: '1.5rem' }}>
