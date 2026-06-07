@@ -254,9 +254,9 @@ const VnStockDashboard = ({ onClose }) => {
           </h2>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
-            <div style={{ position: 'relative', width: '250px' }}>
+        <div className="modal-header-controls" style={{ display: 'flex', alignItems: 'center', gap: '15px', width: 'auto' }}>
+          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', flex: 1, minWidth: 0 }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
               <input
                 type="text"
                 placeholder="Nhập mã CK (VD: VHM)..."
@@ -295,7 +295,7 @@ const VnStockDashboard = ({ onClose }) => {
         </div>
       </div>
 
-      <div style={{ padding: '2rem', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
+      <div className="modal-body-responsive" style={{ padding: '2rem 1rem', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
         {isLoading && Object.keys(statsMap).length === 0 ? (
            <div className="loading" style={{ height: '50vh' }}>
              <div className="spinner" style={{ borderTopColor: '#ef4444' }}></div>
