@@ -213,10 +213,27 @@ const Us100DetailChart = ({ onClose }) => {
     });
   };
 
+  const fetchYahoo = async (query) => {
+    const baseUrl = import.meta.env.DEV ? '/yahoo' : 'https://corsproxy.io/?https://query1.finance.yahoo.com';
+    let res;
+    try {
+      res = await fetch(`${baseUrl}${query}`);
+      if (!res.ok) throw new Error("Primary failed");
+    } catch (err) {
+      if (!import.meta.env.DEV) {
+        const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com${query}`)}`;
+        res = await fetch(fallbackUrl);
+      } else {
+        throw err;
+      }
+    }
+    return res;
+  };
+
   const fetch2YearsKlines = async (onProgress) => {
     try {
         if (onProgress) onProgress(50);
-        const response = await fetch(`/yahoo/v8/finance/chart/^NDX?interval=1h&range=730d`);
+        const response = await fetchYahoo(`/v8/finance/chart/^NDX?interval=1h&range=730d`);
         if (!response.ok) return [];
         const data = await response.json();
         
@@ -395,7 +412,7 @@ const Us100DetailChart = ({ onClose }) => {
     // Fetch latest candle every 2 seconds for real-time updates
     const fetchLiveCandle = async () => {
       try {
-        const res = await fetch(`/yahoo/v8/finance/chart/^NDX?interval=1h&range=1d`);
+        const res = await fetchYahoo(`/v8/finance/chart/^NDX?interval=1h&range=1d`);
         if (!res.ok) return;
         const data = await res.json();
         
