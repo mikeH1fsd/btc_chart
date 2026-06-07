@@ -20,8 +20,8 @@ const TrendingCoinsDashboard = ({ onClose }) => {
         if (!response.ok) throw new Error('Failed to fetch trending coins');
         const data = await response.json();
         
-        // Take top 5 for CoinGecko
-        const top5 = data.coins.slice(0, 5).map((coin, index) => ({
+        // Take top 10 for CoinGecko
+        const top10Gecko = data.coins.slice(0, 10).map((coin, index) => ({
           rank: index + 1,
           id: coin.item.id,
           name: coin.item.name,
@@ -33,7 +33,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           volume: coin.item.data.total_volume
         }));
 
-        if (isMounted) setTrendingCoins(top5);
+        if (isMounted) setTrendingCoins(top10Gecko);
       } catch (err) {
         console.error('Error fetching trending coins:', err);
         if (isMounted) setError(err.message);
@@ -234,7 +234,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
             transition: 'all 0.2s'
           }}
         >
-          🦎 CoinGecko (Top 5 Voting)
+          🦎 CoinGecko (Top 10 Voting)
         </button>
         <button
           onClick={() => setDataSource('binance')}
