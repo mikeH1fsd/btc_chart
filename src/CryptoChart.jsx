@@ -125,7 +125,7 @@ const CryptoChart = ({ symbol, label, color, index = 0, onDataLoaded }) => {
 
     fetchData().then(() => {
       if (isMounted) {
-        interval = setInterval(fetchLivePrice, 2000);
+        interval = setInterval(fetchLivePrice, 4000);
       }
     });
 

@@ -58,10 +58,14 @@ const TopCoinsDashboard = ({ onClose }) => {
   }, []);
 
   const handleDataLoaded = (symbol, stats) => {
-    setStatsMap(prev => ({
-      ...prev,
-      [symbol]: stats
-    }));
+    setStatsMap(prev => {
+      // Preserve existing properties like isExpanded
+      const existing = prev[symbol] || {};
+      return {
+        ...prev,
+        [symbol]: { ...existing, ...stats }
+      };
+    });
   };
 
   if (isLoading) {
@@ -155,18 +159,6 @@ const TopCoinsDashboard = ({ onClose }) => {
                   onDataLoaded={(s) => handleDataLoaded(coin.symbol, s)} 
                 />
               </div>
-
-              {!stats && (
-                <div style={{ display: 'none' }}>
-                  <CryptoChart 
-                    symbol={coin.symbol} 
-                    label={`${coin.baseAsset}/USDT`} 
-                    color={coin.color} 
-                    index={index}
-                    onDataLoaded={(s) => handleDataLoaded(coin.symbol, s)} 
-                  />
-                </div>
-              )}
 
               {stats && (
                 <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
