@@ -270,10 +270,56 @@ body {
   }
   .trending-controls-mobile {
     flex-wrap: wrap;
+    justify-content: flex-start;
   }
   .trending-header-mobile {
     flex-direction: column;
     align-items: flex-start !important;
     gap: 15px;
+  }
+  .trending-header-mobile h2 {
+    font-size: 1.5rem !important;
+    line-height: 1.2;
+  }
+  .trending-header-mobile p {
+    font-size: 0.9rem !important;
+  }
+
+  /* App Mobile */
+  .app-header-mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: center !important;
+    text-align: center;
+    gap: 15px;
+    margin-bottom: 1.5rem;
+  }
+  .app-header-mobile .title {
+    font-size: 1.8rem !important;
+  }
+  .app-header-buttons {
+    justify-content: center !important;
+    width: 100%;
+  }
+  .app-header-buttons button {
+    flex: 1;
+    font-size: 0.9rem !important;
+    padding: 10px !important;
+  }
+  
+  /* Make coin image smaller on mobile */
+  .coin-card-mobile img, .coin-card-mobile .coin-icon-placeholder {
+    width: 35px !important;
+    height: 35px !important;
+    margin-right: 10px !important;
+  }
+  .coin-card-mobile .coin-rank-mobile {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 0.9rem !important;
+    margin-right: 10px !important;
+  }
+  .coin-card-mobile h3 {
+    font-size: 1.1rem !important;
   }
 }

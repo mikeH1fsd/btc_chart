@@ -283,7 +283,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
             onMouseOver={e => e.currentTarget.style.transform = 'translateX(10px)'}
             onMouseOut={e => e.currentTarget.style.transform = 'translateX(0)'}
           >
-            <div style={{ 
+            <div className="coin-rank-mobile" style={{ 
               width: '40px', 
               height: '40px', 
               borderRadius: '50%', 
@@ -302,7 +302,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
             {dataSource === 'coingecko' ? (
               <img src={coin.image} alt={coin.name} style={{ width: '50px', height: '50px', borderRadius: '50%', marginRight: '20px' }} />
             ) : (
-              <div style={{ width: '50px', height: '50px', borderRadius: '50%', marginRight: '20px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+              <div className="coin-icon-placeholder" style={{ width: '50px', height: '50px', borderRadius: '50%', marginRight: '20px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
                 💎
               </div>
             )}
