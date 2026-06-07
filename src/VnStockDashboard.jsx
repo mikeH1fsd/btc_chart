@@ -49,11 +49,11 @@ const VnStockDashboard = ({ onClose }) => {
           try {
              let res;
              try {
-               res = await fetch(`${baseUrl}/v8/finance/chart/${symbol}?interval=1wk&range=max`);
+               res = await fetch(`${baseUrl}/v8/finance/chart/${symbol}?interval=1d&range=20y`);
                if (!res.ok) throw new Error("Primary fetch failed");
              } catch (err) {
                if (!import.meta.env.DEV) {
-                 const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1wk&range=max`)}`;
+                 const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=20y`)}`;
                  res = await fetch(fallbackUrl);
                } else {
                  throw err;
@@ -72,14 +72,15 @@ const VnStockDashboard = ({ onClose }) => {
              const closes = quote.close || [];
              
              const validCloses = closes.filter(c => c !== null);
-             const previousClose = validCloses.length > 1 ? validCloses[validCloses.length - 2] : currentPrice;
+             const previousCloseIndex = Math.max(0, validCloses.length - 6); // 5 trading days ago
+             const previousClose = validCloses.length > 0 ? validCloses[previousCloseIndex] : currentPrice;
              
              const change = currentPrice - previousClose;
              const changePercent = previousClose ? (change / previousClose) * 100 : 0;
 
              const validHighs = highs.filter(h => h !== null);
              const highestAllTime = validHighs.length > 0 ? Math.max(...validHighs) : currentPrice;
-             const pointsIn5Years = 260; // 5 years of weekly data
+             const pointsIn5Years = 1300; // ~5 years of daily data (260 * 5)
              const highs5y = validHighs.slice(Math.max(validHighs.length - pointsIn5Years, 0));
              const highest5y = highs5y.length > 0 ? Math.max(...highs5y) : currentPrice;
 
