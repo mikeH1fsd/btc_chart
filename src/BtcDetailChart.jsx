@@ -379,8 +379,8 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     const loadInitialData = async () => {
       try {
         let initialCandles = 43800;
-        if (interval === '15m') initialCandles = 17280; // ~6 months
-        if (interval === '5m') initialCandles = 17280; // ~2 months
+        if (interval === '15m') initialCandles = 8640; // ~3 months
+        if (interval === '5m') initialCandles = 8640; // ~1 month
         
         const data = await fetchHistoricalKlines(initialCandles, Date.now(), (progress) => {
           setLoadingProgress(progress);
