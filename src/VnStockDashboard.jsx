@@ -4,7 +4,14 @@ import YahooChart from './YahooChart';
 const VnStockDashboard = ({ onClose }) => {
   const [tickerInput, setTickerInput] = useState('');
   const [activeTicker, setActiveTicker] = useState(null);
-  const [stats, setStats] = useState({ current: '---', change: '---', changePercent: '---', isUp: true, highestAllTime: '---', dropFromHighAllTime: '---', highest5y: '---', dropFromHigh5y: '---' });
+  
+  const initialStats = { current: '---', change: '---', changePercent: '---', isUp: true, highestAllTime: '---', dropFromHighAllTime: '---', highest5y: '---', dropFromHigh5y: '---' };
+  const [stats, setStats] = useState(initialStats);
+
+  React.useEffect(() => {
+    // Clear stats immediately when ticker changes so old data is dropped
+    setStats(initialStats);
+  }, [activeTicker]);
 
   const handleSearch = (e) => {
     e.preventDefault();

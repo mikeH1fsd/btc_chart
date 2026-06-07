@@ -23,6 +23,10 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
   };
 
   useEffect(() => {
+    // Clear previous data immediately when ticker changes
+    setChartData(null);
+    setError(null);
+
     const fetchData = async () => {
       try {
         console.log(`Fetching ${label} data from Yahoo Finance...`);
