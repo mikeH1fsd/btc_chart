@@ -105,11 +105,19 @@ const BtcChart = ({ onDataLoaded }) => {
       }
     };
 
+    let interval;
+    let isMounted = true;
+
     fetchData().then(() => {
-      const interval = setInterval(fetchLivePrice, 500);
-      return () => clearInterval(interval);
+      if (isMounted) {
+        interval = setInterval(fetchLivePrice, 2000);
+      }
     });
 
+    return () => {
+      isMounted = false;
+      if (interval) clearInterval(interval);
+    };
   }, [onDataLoaded]);
 
   const options = {

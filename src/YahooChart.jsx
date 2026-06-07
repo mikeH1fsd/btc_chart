@@ -133,11 +133,19 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
       }
     };
 
+    let interval;
+    let isMounted = true;
+
     fetchData().then(() => {
-      const interval = setInterval(fetchLivePrice, 2000);
-      return () => clearInterval(interval);
+      if (isMounted) {
+        interval = setInterval(fetchLivePrice, 2000);
+      }
     });
 
+    return () => {
+      isMounted = false;
+      if (interval) clearInterval(interval);
+    };
   }, [ticker, label, color, onDataLoaded]);
 
   const options = {

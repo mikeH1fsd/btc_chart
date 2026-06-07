@@ -120,11 +120,19 @@ const CryptoChart = ({ symbol, label, color, index = 0, onDataLoaded }) => {
       }
     };
 
+    let interval;
+    let isMounted = true;
+
     fetchData().then(() => {
-      const interval = setInterval(fetchLivePrice, 2000);
-      return () => clearInterval(interval);
+      if (isMounted) {
+        interval = setInterval(fetchLivePrice, 2000);
+      }
     });
 
+    return () => {
+      isMounted = false;
+      if (interval) clearInterval(interval);
+    };
   }, [symbol, label, color, onDataLoaded]);
 
   const options = {
