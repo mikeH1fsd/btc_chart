@@ -10,7 +10,8 @@ import Us100DetailChart from './Us100DetailChart';
 const INITIAL_CHARTS = [
   { id: 'usdhkd', title: 'USD / HKD', currency: 'HKD', source: 'Frankfurter API', color: '#38bdf8', historyTitle: 'USD/HKD Exchange Rate History', timeframe: '10 Years' },
   { id: 'btc', title: 'Bitcoin / USDT', currency: 'USDT', source: 'Binance API', color: '#f59e0b', historyTitle: 'Bitcoin Price History', timeframe: '10 Years' },
-  { id: 'us100', title: 'US100 / USD', currency: 'USD', source: 'Yahoo Finance', color: '#8b5cf6', historyTitle: 'NASDAQ 100 Index History', timeframe: '5 Years' }
+  { id: 'us100', title: 'US100 / USD', currency: 'USD', source: 'Yahoo Finance', color: '#8b5cf6', historyTitle: 'NASDAQ 100 Index History', timeframe: '5 Years' },
+  { id: 'xauusd', title: 'Gold (XAU/USD)', currency: 'USD', source: 'Yahoo Finance', color: '#eab308', historyTitle: 'Gold Price History', timeframe: '5 Years' }
 ];
 
 // Helper to convert hex to rgba for card border
@@ -51,6 +52,7 @@ function App() {
   const handleDataLoadedHKD = useCallback((data) => handleDataLoaded('usdhkd', data), [handleDataLoaded]);
   const handleDataLoadedBTC = useCallback((data) => handleDataLoaded('btc', data), [handleDataLoaded]);
   const handleDataLoadedUS100 = useCallback((data) => handleDataLoaded('us100', data), [handleDataLoaded]);
+  const handleDataLoadedXAUUSD = useCallback((data) => handleDataLoaded('xauusd', data), [handleDataLoaded]);
 
   const renderChartComponent = (id) => {
     switch (id) {
@@ -60,6 +62,8 @@ function App() {
         return <BtcChart onDataLoaded={handleDataLoadedBTC} />;
       case 'us100':
         return <YahooChart ticker="^NDX" label="US100" color="#8b5cf6" onDataLoaded={handleDataLoadedUS100} />;
+      case 'xauusd':
+        return <YahooChart ticker="GC=F" label="Gold" color="#eab308" onDataLoaded={handleDataLoadedXAUUSD} />;
       default:
         return null;
     }
