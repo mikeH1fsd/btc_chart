@@ -5,6 +5,11 @@ const BtcChart = ({ onDataLoaded }) => {
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
   const chartRef = useRef(null);
+  
+  const onDataLoadedRef = useRef(onDataLoaded);
+  useEffect(() => {
+    onDataLoadedRef.current = onDataLoaded;
+  }, [onDataLoaded]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,14 +77,16 @@ const BtcChart = ({ onDataLoaded }) => {
       const highestPrice = Math.max(...values);
       const dropFromHighPercent = highestPrice ? ((currentRate - highestPrice) / highestPrice) * 100 : 0;
 
-      onDataLoaded({
-        current: currentRate.toFixed(2),
-        change: change.toFixed(2),
-        changePercent: changePercent.toFixed(2),
-        isUp: change >= 0,
-        highest: highestPrice.toFixed(2),
-        dropFromHigh: dropFromHighPercent.toFixed(2),
-      });
+      if (onDataLoadedRef.current) {
+        onDataLoadedRef.current({
+          current: currentRate.toFixed(2),
+          change: change.toFixed(2),
+          changePercent: changePercent.toFixed(2),
+          isUp: change >= 0,
+          highest: highestPrice.toFixed(2),
+          dropFromHigh: dropFromHighPercent.toFixed(2),
+        });
+      };
     };
 
     const fetchLivePrice = async () => {
@@ -118,7 +125,7 @@ const BtcChart = ({ onDataLoaded }) => {
       isMounted = false;
       if (interval) clearInterval(interval);
     };
-  }, [onDataLoaded]);
+  }, []);
 
   const options = {
     responsive: true,

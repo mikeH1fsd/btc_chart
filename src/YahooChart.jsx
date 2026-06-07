@@ -5,6 +5,11 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
   const chartRef = useRef(null);
+  
+  const onDataLoadedRef = useRef(onDataLoaded);
+  useEffect(() => {
+    onDataLoadedRef.current = onDataLoaded;
+  }, [onDataLoaded]);
 
   // Helper to safely format colors for gradients
   const getGradientRgba = (hexColor, alpha) => {
@@ -96,8 +101,8 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
       const highestPrice = Math.max(...values);
       const dropFromHighPercent = highestPrice ? ((currentRate - highestPrice) / highestPrice) * 100 : 0;
 
-      if (onDataLoaded) {
-          onDataLoaded({
+      if (onDataLoadedRef.current) {
+          onDataLoadedRef.current({
             current: currentRate.toFixed(2),
             change: change.toFixed(2),
             changePercent: changePercent.toFixed(2),
@@ -146,7 +151,7 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
       isMounted = false;
       if (interval) clearInterval(interval);
     };
-  }, [ticker, label, color, onDataLoaded]);
+  }, [ticker, label, color]);
 
   const options = {
     responsive: true,

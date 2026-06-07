@@ -5,6 +5,11 @@ const CryptoChart = ({ symbol, label, color, index = 0, onDataLoaded }) => {
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
   const chartRef = useRef(null);
+  
+  const onDataLoadedRef = useRef(onDataLoaded);
+  useEffect(() => {
+    onDataLoadedRef.current = onDataLoaded;
+  }, [onDataLoaded]);
 
   // Helper to safely format colors for gradients
   const getGradientRgba = (hexColor, alpha) => {
@@ -88,14 +93,16 @@ const CryptoChart = ({ symbol, label, color, index = 0, onDataLoaded }) => {
       const highestPrice = Math.max(...values);
       const dropFromHighPercent = highestPrice ? ((currentRate - highestPrice) / highestPrice) * 100 : 0;
 
-      onDataLoaded({
-        current: currentRate.toFixed(4),
-        change: change.toFixed(4),
-        changePercent: changePercent.toFixed(2),
-        isUp: change >= 0,
-        highest: highestPrice.toFixed(4),
-        dropFromHigh: dropFromHighPercent.toFixed(2),
-      });
+      if (onDataLoadedRef.current) {
+        onDataLoadedRef.current({
+          current: currentRate.toFixed(4),
+          change: change.toFixed(4),
+          changePercent: changePercent.toFixed(2),
+          isUp: change >= 0,
+          highest: highestPrice.toFixed(4),
+          dropFromHigh: dropFromHighPercent.toFixed(2),
+        });
+      }
     };
 
     const fetchLivePrice = async () => {
@@ -133,7 +140,7 @@ const CryptoChart = ({ symbol, label, color, index = 0, onDataLoaded }) => {
       isMounted = false;
       if (interval) clearInterval(interval);
     };
-  }, [symbol, label, color, onDataLoaded]);
+  }, [symbol, label, color]); // REMOVE onDataLoaded to prevent infinite fetch loop
 
   const options = {
     responsive: true,
