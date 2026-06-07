@@ -141,7 +141,7 @@ const TopCoinsDashboard = ({ onClose }) => {
 
   return (
     <div style={{ padding: '20px', maxWidth: '1600px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="trending-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2 style={{ color: '#fff', fontSize: '1.8rem', fontWeight: 700, margin: 0 }}>
           🔥 Top 15 Cryptocurrencies by 24h Volume
         </h2>
@@ -167,7 +167,7 @@ const TopCoinsDashboard = ({ onClose }) => {
 
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', 
         gap: '20px' 
       }}>
         {topCoins.map((coin, index) => {

@@ -252,4 +252,28 @@ body {
   .tv-handle {
     height: 36px !important; /* Larger touch target */
   }
+  /* Trending Mobile */
+  .coin-card-mobile {
+    flex-wrap: wrap;
+    padding: 1rem !important;
+    gap: 10px !important;
+  }
+  .coin-price-mobile {
+    width: 100%;
+    text-align: left !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 5px;
+  }
+  .trending-controls-mobile {
+    flex-wrap: wrap;
+  }
+  .trending-header-mobile {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 15px;
+  }
 }

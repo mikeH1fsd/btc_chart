@@ -89,12 +89,12 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header className="header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
         <div>
           <h1 className="title" style={{ fontSize: '2.5rem', margin: 0 }}>Global Markets Dashboard</h1>
           <p className="subtitle" style={{ marginTop: '0.5rem' }}>Real-time Analytics - Drag & Drop to Reorder</p>
         </div>
-        <div style={{ display: 'flex', gap: '15px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button 
             onClick={() => setShowTrendingCoins(true)}
             style={{

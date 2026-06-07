@@ -200,7 +200,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
 
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div className="trending-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h2 style={{ color: '#fff', fontSize: '2rem', fontWeight: 800, margin: '0 0 0.5rem 0', background: 'linear-gradient(to right, #fbbf24, #f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             🔥 Phân Tích Tâm Lý (Market Sentiment)
@@ -227,7 +227,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
         </button>
       </div>
 
-      <div style={{ marginBottom: '2rem', display: 'flex', gap: '10px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '12px', width: 'fit-content' }}>
+      <div className="trending-controls-mobile" style={{ marginBottom: '2rem', display: 'flex', gap: '10px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '12px', width: 'fit-content' }}>
         <span style={{ color: '#e2e8f0', fontWeight: 600, marginRight: '10px' }}>Nguồn dữ liệu:</span>
         <button
           onClick={() => setDataSource('coingecko')}
@@ -272,7 +272,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           return (
           <div 
             key={coin.id}
-            className="glass-card"
+            className="glass-card coin-card-mobile"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -347,7 +347,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
               </div>
             </div>
             
-            <div style={{ textAlign: 'right' }}>
+            <div className="coin-price-mobile" style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>
                 {typeof coin.price === 'number' ? `$${coin.price.toFixed(coin.price < 0.01 ? 6 : 2)}` : String(coin.price).replace('$', '~$')}
               </div>
