@@ -9,10 +9,10 @@ let memoryCache = {
 
 const TrendingCoinsDashboard = ({ onClose }) => {
   const [dataSource, setDataSource] = useState('coingecko'); // 'coingecko' | 'binance'
-  const [trendingCoins, setTrendingCoins] = useState(memoryCache.coingecko || []);
+  const [trendingCoins, setTrendingCoins] = useState(memoryCache.coingecko ? [...memoryCache.coingecko] : []);
   const [isLoading, setIsLoading] = useState(!memoryCache.coingecko);
   const [error, setError] = useState(null);
-  const [sentiments, setSentiments] = useState(memoryCache.sentiments);
+  const [sentiments, setSentiments] = useState({...memoryCache.sentiments});
 
   useEffect(() => {
     let isMounted = true;
@@ -136,8 +136,8 @@ const TrendingCoinsDashboard = ({ onClose }) => {
     let isMounted = true;
     const fetchSentiments = () => {
       trendingCoins.forEach((coin, index) => {
-        // Skip if already in cache
-        if (memoryCache.sentiments[coin.id]) return;
+        // Skip if already in cache AND it was successful
+        if (memoryCache.sentiments[coin.id] && !memoryCache.sentiments[coin.id].error) return;
 
         // Stagger the START of each coin's fetch by 500ms
         setTimeout(async () => {
@@ -198,7 +198,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           
           if (!success) {
             const errSentiment = { up: 0, down: 0, error: true, label: 'Lỗi API' };
-            memoryCache.sentiments[coin.id] = errSentiment;
+            // DO NOT cache the error, so it can retry when the user re-enters the page
             if (isMounted) {
               setSentiments(prev => ({
                 ...prev,
