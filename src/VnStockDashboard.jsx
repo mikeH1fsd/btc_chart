@@ -39,11 +39,27 @@ const VnStockDashboard = ({ onClose }) => {
       try {
         const allTickersToFetch = [...new Set([...DEFAULT_TICKERS, ...searchTickers])];
         
+        const baseUrl = import.meta.env.DEV 
+          ? '/yahoo' 
+          : 'https://corsproxy.io/?https://query1.finance.yahoo.com';
+
         // Fetch all quotes in parallel using /v8/finance/chart
         const promises = allTickersToFetch.map(async (t) => {
           const symbol = t.includes('.') ? t : (t === 'PVS' ? 'PVS.HN' : `${t}.VN`);
           try {
-             const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1wk&range=max`);
+             let res;
+             try {
+               res = await fetch(`${baseUrl}/v8/finance/chart/${symbol}?interval=1wk&range=max`);
+               if (!res.ok) throw new Error("Primary fetch failed");
+             } catch (err) {
+               if (!import.meta.env.DEV) {
+                 const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1wk&range=max`)}`;
+                 res = await fetch(fallbackUrl);
+               } else {
+                 throw err;
+               }
+             }
+             
              if (!res.ok) return null;
              const data = await res.json();
              if (!data.chart.result || data.chart.result.length === 0) return null;
