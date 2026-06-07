@@ -10,7 +10,7 @@ import Us100DetailChart from './Us100DetailChart';
 const INITIAL_CHARTS = [
   { id: 'usdhkd', title: 'USD / HKD', currency: 'HKD', source: 'Frankfurter API', color: '#38bdf8', historyTitle: 'USD/HKD Exchange Rate History', timeframe: '10 Years' },
   { id: 'btc', title: 'Bitcoin / USDT', currency: 'USDT', source: 'Binance API', color: '#f59e0b', historyTitle: 'Bitcoin Price History', timeframe: '10 Years' },
-  { id: 'us100', title: 'US100 / USD', currency: 'USD', source: 'Yahoo Finance', color: '#8b5cf6', historyTitle: 'NASDAQ 100 Index History', timeframe: '10 Years' }
+  { id: 'us100', title: 'US100 / USD', currency: 'USD', source: 'Yahoo Finance', color: '#8b5cf6', historyTitle: 'NASDAQ 100 Index History', timeframe: '5 Years' }
 ];
 
 // Helper to convert hex to rgba for card border

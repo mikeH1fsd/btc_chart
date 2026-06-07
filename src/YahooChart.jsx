@@ -22,9 +22,9 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
       try {
         console.log(`Fetching ${label} data from Yahoo Finance...`);
 
-        // Fetch 10 years of daily data
+        // Fetch 5 years of daily data
         const response = await fetch(
-          `/yahoo/v8/finance/chart/${ticker}?interval=1d&range=10y`
+          `/yahoo/v8/finance/chart/${ticker}?interval=1d&range=5y`
         );
         
         if (!response.ok) {
