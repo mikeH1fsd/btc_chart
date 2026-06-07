@@ -61,8 +61,37 @@ const Chart = ({ onDataLoaded }) => {
             throw new Error("No data returned from API");
         }
 
-        const labels = Object.keys(data.rates);
-        const values = Object.values(data.rates).map((rate) => rate.HKD);
+        const dailyLabels = Object.keys(data.rates);
+        const dailyValues = Object.values(data.rates).map((rate) => rate.HKD);
+
+        const labels = [];
+        const values = [];
+        let currentWeekStr = '';
+        let lastValueInWeek = 0;
+        let lastLabelInWeek = '';
+        
+        for (let i = 0; i < dailyLabels.length; i++) {
+           const dateStr = dailyLabels[i];
+           const dateObj = new Date(dateStr);
+           const firstDayOfYear = new Date(dateObj.getFullYear(), 0, 1);
+           const pastDaysOfYear = (dateObj - firstDayOfYear) / 86400000;
+           const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+           const weekKey = `${dateObj.getFullYear()}-W${weekNum}`;
+           
+           if (currentWeekStr !== weekKey) {
+               if (currentWeekStr !== '') {
+                   labels.push(lastLabelInWeek);
+                   values.push(lastValueInWeek);
+               }
+               currentWeekStr = weekKey;
+           }
+           lastLabelInWeek = dateStr;
+           lastValueInWeek = dailyValues[i];
+        }
+        if (currentWeekStr !== '') {
+           labels.push(lastLabelInWeek);
+           values.push(lastValueInWeek);
+        }
 
         const currentRate = values[values.length - 1];
         const previousRate = values.length > 1 ? values[values.length - 2] : currentRate;
