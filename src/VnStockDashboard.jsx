@@ -43,7 +43,7 @@ const VnStockDashboard = ({ onClose }) => {
         const promises = allTickersToFetch.map(async (t) => {
           const symbol = t.includes('.') ? t : (t === 'PVS' ? 'PVS.HN' : `${t}.VN`);
           try {
-             const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`);
+             const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1wk&range=max`);
              if (!res.ok) return null;
              const data = await res.json();
              if (!data.chart.result || data.chart.result.length === 0) return null;
@@ -51,8 +51,22 @@ const VnStockDashboard = ({ onClose }) => {
              const currentPrice = result.meta.regularMarketPrice;
              const previousClose = result.meta.chartPreviousClose;
              const change = currentPrice - previousClose;
-             const changePercent = (change / previousClose) * 100;
-             return { ticker: t, currentPrice, changePercent };
+             const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+
+             // Extract high prices
+             const quote = result.indicators?.quote?.[0] || {};
+             const highs = quote.high || [];
+             const validHighs = highs.filter(h => h !== null);
+             
+             const highestAllTime = validHighs.length > 0 ? Math.max(...validHighs) : currentPrice;
+             const pointsIn5Years = 260; // 5 years of weekly data
+             const highs5y = validHighs.slice(Math.max(validHighs.length - pointsIn5Years, 0));
+             const highest5y = highs5y.length > 0 ? Math.max(...highs5y) : currentPrice;
+
+             const dropFromHighAllTime = highestAllTime ? ((currentPrice - highestAllTime) / highestAllTime) * 100 : 0;
+             const dropFromHigh5y = highest5y ? ((currentPrice - highest5y) / highest5y) * 100 : 0;
+
+             return { ticker: t, currentPrice, changePercent, highestAllTime, dropFromHighAllTime, highest5y, dropFromHigh5y };
           } catch(e) { return null; }
         });
         
@@ -67,10 +81,10 @@ const VnStockDashboard = ({ onClose }) => {
                   changePercent: r.changePercent.toFixed(2),
                   isUp: r.changePercent >= 0,
                   isExpanded: false,
-                  highestAllTime: null,
-                  dropFromHighAllTime: null,
-                  highest5y: null,
-                  dropFromHigh5y: null
+                  highestAllTime: r.highestAllTime.toFixed(2),
+                  dropFromHighAllTime: r.dropFromHighAllTime.toFixed(2),
+                  highest5y: r.highest5y.toFixed(2),
+                  dropFromHigh5y: r.dropFromHigh5y.toFixed(2)
                 };
              }
           });
@@ -137,19 +151,6 @@ const VnStockDashboard = ({ onClose }) => {
           </div>
         </div>
         
-        {stats.isExpanded && (
-          <div style={{ flex: 1, minHeight: 0, position: 'relative', marginTop: '1rem', animation: 'fadeIn 0.5s' }}>
-            <YahooChart 
-              ticker={ticker === 'PVS' ? 'PVS.HN' : `${ticker}.VN`} 
-              label={`Biểu đồ giá ${ticker}`} 
-              color={sectorColor} 
-              interval="1wk"
-              range="max"
-              onDataLoaded={(s) => handleDataLoaded(ticker, s)} 
-            />
-          </div>
-        )}
-
         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {stats.highestAllTime && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -173,6 +174,19 @@ const VnStockDashboard = ({ onClose }) => {
               </div>
             </div>
           )}
+
+        {stats.isExpanded && (
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', marginTop: '1rem', animation: 'fadeIn 0.5s' }}>
+            <YahooChart 
+              ticker={ticker === 'PVS' ? 'PVS.HN' : `${ticker}.VN`} 
+              label={`Biểu đồ giá ${ticker}`} 
+              color={sectorColor} 
+              interval="1wk"
+              range="max"
+              onDataLoaded={(s) => handleDataLoaded(ticker, s)} 
+            />
+          </div>
+        )}
           
           <button 
             onClick={() => handleDataLoaded(ticker, { isExpanded: !stats.isExpanded })}
