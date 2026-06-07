@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Line } from 'react-chartjs-2';
 
-const CryptoChart = ({ symbol, label, color, onDataLoaded }) => {
+const CryptoChart = ({ symbol, label, color, index = 0, onDataLoaded }) => {
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
   const chartRef = useRef(null);
@@ -20,6 +20,9 @@ const CryptoChart = ({ symbol, label, color, onDataLoaded }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Stagger requests to prevent 15 concurrent requests crashing the browser network
+        await new Promise(resolve => setTimeout(resolve, index * 300));
+
         // Fetch 4 years of 1D data (365 * 4 = 1460 days)
         const response = await fetch(
           `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=1000`

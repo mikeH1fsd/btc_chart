@@ -116,7 +116,7 @@ const TopCoinsDashboard = ({ onClose }) => {
         gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
         gap: '20px' 
       }}>
-        {topCoins.map((coin) => {
+        {topCoins.map((coin, index) => {
           const stats = statsMap[coin.symbol];
           return (
             <div 
@@ -125,9 +125,10 @@ const TopCoinsDashboard = ({ onClose }) => {
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                height: '320px',
+                height: stats && stats.isExpanded ? '400px' : 'auto',
                 padding: '1.5rem',
                 borderTop: `4px solid ${coin.color}`,
+                transition: 'height 0.3s ease'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -145,24 +146,59 @@ const TopCoinsDashboard = ({ onClose }) => {
                 )}
               </div>
               
-              <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+              <div style={{ flex: stats && stats.isExpanded ? 1 : 0, minHeight: 0, position: 'relative', display: stats && stats.isExpanded ? 'block' : 'none' }}>
                 <CryptoChart 
                   symbol={coin.symbol} 
                   label={`${coin.baseAsset}/USDT`} 
                   color={coin.color} 
+                  index={index}
                   onDataLoaded={(s) => handleDataLoaded(coin.symbol, s)} 
                 />
               </div>
 
-              {stats && stats.highest && (
-                <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>ATH (Range)</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>${stats.highest}</span>
-                    <span style={{ color: '#ef4444', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                      ▼ {Math.abs(stats.dropFromHigh)}%
-                    </span>
-                  </div>
+              {!stats && (
+                <div style={{ display: 'none' }}>
+                  <CryptoChart 
+                    symbol={coin.symbol} 
+                    label={`${coin.baseAsset}/USDT`} 
+                    color={coin.color} 
+                    index={index}
+                    onDataLoaded={(s) => handleDataLoaded(coin.symbol, s)} 
+                  />
+                </div>
+              )}
+
+              {stats && (
+                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {stats.highest && (
+                    <div style={{ paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>ATH (Range)</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>${stats.highest}</span>
+                        <span style={{ color: '#ef4444', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                          ▼ {Math.abs(stats.dropFromHigh)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <button 
+                    onClick={() => handleDataLoaded(coin.symbol, { ...stats, isExpanded: !stats.isExpanded })}
+                    style={{
+                      padding: '8px',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#e2e8f0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    {stats.isExpanded ? 'Hide Chart' : 'Extend Chart'}
+                  </button>
                 </div>
               )}
             </div>
