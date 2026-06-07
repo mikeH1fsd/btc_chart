@@ -16,6 +16,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   
+  const [isExtended, setIsExtended] = useState(interval === '1h');
+  const [isExtending, setIsExtending] = useState(false);
+  
   const [showEma25, setShowEma25] = useState(true);
   const [showEma200, setShowEma200] = useState(true);
   const [showEma800, setShowEma800] = useState(true);
@@ -211,17 +214,13 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     });
   };
 
-  const fetchHistoricalKlines = async (onProgress) => {
+  const fetchHistoricalKlines = async (target, end, onProgress) => {
     try {
       let allData = [];
-      let currentEndTime = Date.now();
+      let currentEndTime = end;
       const limit = 1000;
       
-      let targetCandles = 43800; // default 1h 5y
-      if (interval === '15m') targetCandles = 105120; // 3 years
-      if (interval === '5m') targetCandles = 105120; // 1 year
-      
-      const batches = Math.ceil(targetCandles / (limit * 3));
+      const batches = Math.ceil(target / (limit * 3));
       
       for (let i = 0; i < batches; i++) {
         const promises = [];
@@ -251,7 +250,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
         }
         
         if (onProgress) {
-          onProgress(Math.min(100, Math.round((allData.length / targetCandles) * 100)));
+          onProgress(Math.min(100, Math.round((allData.length / target) * 100)));
         }
       }
       
@@ -379,7 +378,11 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
 
     const loadInitialData = async () => {
       try {
-        const data = await fetchHistoricalKlines((progress) => {
+        let initialCandles = 43800;
+        if (interval === '15m') initialCandles = 17280; // ~6 months
+        if (interval === '5m') initialCandles = 17280; // ~2 months
+        
+        const data = await fetchHistoricalKlines(initialCandles, Date.now(), (progress) => {
           setLoadingProgress(progress);
         });
         
@@ -610,6 +613,48 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     if (bgSeriesRef.current) bgSeriesRef.current.applyOptions({ visible: showBg });
   }, [showBg]);
 
+  const handleExtendData = async () => {
+    if (isExtending || isExtended || candleDataRef.current.length === 0) return;
+    setIsExtending(true);
+    setLoadingProgress(0);
+    try {
+        let fullCandles = 105120; // 3 years for 15m, 1 year for 5m
+        let currentCandles = candleDataRef.current.length;
+        let remainingCandles = fullCandles - currentCandles;
+        if (remainingCandles <= 0) {
+            setIsExtended(true);
+            return;
+        }
+        
+        const oldData = await fetchHistoricalKlines(remainingCandles, oldestTimeRef.current - 1, (progress) => {
+            setLoadingProgress(progress);
+        });
+        
+        if (oldData.length > 0) {
+            const combinedData = [...oldData, ...candleDataRef.current];
+            
+            const rsiArrayBase = getRsiArray(combinedData, 14);
+            const rsiArrayHTF = getHigherTimeframeRsiArray(combinedData, 14, 4);
+            
+            const { bgData } = applySignalsAndBackground(combinedData, rsiArrayBase, rsiArrayHTF);
+            if (bgSeriesRef.current) bgSeriesRef.current.setData(bgData);
+            if (seriesRef.current) seriesRef.current.setData(combinedData);
+            
+            if (ema25SeriesRef.current) ema25SeriesRef.current.setData(getEmaArray(combinedData, 25));
+            if (ema200SeriesRef.current) ema200SeriesRef.current.setData(getEmaArray(combinedData, 200));
+            if (ema800SeriesRef.current) ema800SeriesRef.current.setData(getEmaArray(combinedData, 800));
+            
+            candleDataRef.current = combinedData;
+            oldestTimeRef.current = combinedData[0].time * 1000;
+            setIsExtended(true);
+        }
+    } catch (err) {
+        console.error("Error extending data:", err);
+    } finally {
+        setIsExtending(false);
+    }
+  };
+
   const renderPositionZones = () => {
     if (!position) return null;
     const { lots, spread = 0 } = position;
@@ -735,6 +780,30 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
             </button>
           ))}
           
+          {!isExtended && (
+            <button 
+              onClick={handleExtendData}
+              disabled={isExtending}
+              style={{
+                background: 'rgba(234, 179, 8, 0.15)',
+                border: '1px solid #eab308',
+                color: '#eab308',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '0.8rem',
+                cursor: isExtending ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                marginLeft: '5px'
+              }}
+            >
+              {isExtending ? `Extending (${loadingProgress}%)...` : `⚡ Extend Data`}
+            </button>
+          )}
+          
           <button 
             onClick={onClose}
             style={{
@@ -757,7 +826,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
         {isLoading && (
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', zIndex: 10 }}>
             <div className="spinner" style={{ width: '40px', height: '40px', borderTopColor: '#f59e0b' }}></div>
-            <div style={{ color: '#94a3b8' }}>Fetching {years} Years of Data ({loadingProgress}%)...</div>
+            <div style={{ color: '#94a3b8' }}>Fetching Initial Data ({loadingProgress}%)...</div>
             <div style={{ width: '200px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
               <div style={{ width: `${loadingProgress}%`, height: '100%', background: '#f59e0b', transition: 'width 0.2s' }}></div>
             </div>
