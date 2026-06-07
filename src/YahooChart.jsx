@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Line } from 'react-chartjs-2';
 
-const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
+const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval = '1wk', range = '5y' }) => {
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
   const chartRef = useRef(null);
@@ -33,15 +33,15 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
           
         let response;
         try {
-          // Fetch 5 years of weekly data
+          // Fetch requested range and interval
           response = await fetch(
-            `${baseUrl}/v8/finance/chart/${ticker}?interval=1wk&range=5y`
+            `${baseUrl}/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`
           );
           if (!response.ok) throw new Error("Primary fetch failed");
         } catch (err) {
           if (!import.meta.env.DEV) {
             console.log("Fallback to allorigins proxy...");
-            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=5y`)}`;
+            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`)}`;
             response = await fetch(fallbackUrl);
           } else {
             throw err;
@@ -154,20 +154,20 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded }) => {
       }
     };
 
-    let interval;
+    let liveInterval;
     let isMounted = true;
 
     fetchData().then(() => {
       if (isMounted) {
-        interval = setInterval(fetchLivePrice, 2000);
+        liveInterval = setInterval(fetchLivePrice, 2000);
       }
     });
 
     return () => {
       isMounted = false;
-      if (interval) clearInterval(interval);
+      if (liveInterval) clearInterval(liveInterval);
     };
-  }, [ticker, label, color]);
+  }, [ticker, label, color, interval, range]);
 
   const options = {
     responsive: true,
