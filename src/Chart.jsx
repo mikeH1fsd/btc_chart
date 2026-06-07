@@ -66,31 +66,28 @@ const Chart = ({ onDataLoaded }) => {
 
         const labels = [];
         const values = [];
-        let currentWeekStr = '';
-        let lastValueInWeek = 0;
-        let lastLabelInWeek = '';
+        let currentMonthStr = '';
+        let lastValueInMonth = 0;
+        let lastLabelInMonth = '';
         
         for (let i = 0; i < dailyLabels.length; i++) {
            const dateStr = dailyLabels[i];
-           const dateObj = new Date(dateStr);
-           const firstDayOfYear = new Date(dateObj.getFullYear(), 0, 1);
-           const pastDaysOfYear = (dateObj - firstDayOfYear) / 86400000;
-           const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-           const weekKey = `${dateObj.getFullYear()}-W${weekNum}`;
+           // Extract YYYY-MM
+           const monthKey = dateStr.substring(0, 7);
            
-           if (currentWeekStr !== weekKey) {
-               if (currentWeekStr !== '') {
-                   labels.push(lastLabelInWeek);
-                   values.push(lastValueInWeek);
+           if (currentMonthStr !== monthKey) {
+               if (currentMonthStr !== '') {
+                   labels.push(lastLabelInMonth);
+                   values.push(lastValueInMonth);
                }
-               currentWeekStr = weekKey;
+               currentMonthStr = monthKey;
            }
-           lastLabelInWeek = dateStr;
-           lastValueInWeek = dailyValues[i];
+           lastLabelInMonth = dateStr;
+           lastValueInMonth = dailyValues[i];
         }
-        if (currentWeekStr !== '') {
-           labels.push(lastLabelInWeek);
-           values.push(lastValueInWeek);
+        if (currentMonthStr !== '') {
+           labels.push(lastLabelInMonth);
+           values.push(lastValueInMonth);
         }
 
         const currentRate = values[values.length - 1];

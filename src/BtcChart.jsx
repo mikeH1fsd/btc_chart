@@ -16,9 +16,9 @@ const BtcChart = ({ onDataLoaded }) => {
       try {
         console.log(`Fetching BTC data from Binance...`);
 
-        // Fetch 520 weeks of data (approx 10 years)
+        // Fetch 120 months of data (approx 10 years)
         const response = await fetch(
-          `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=520`
+          `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1M&limit=120`
         );
         
         if (!response.ok) {
