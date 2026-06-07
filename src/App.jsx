@@ -59,6 +59,10 @@ function App() {
     }
   };
 
+  if (showBtcDetail) {
+    return <BtcDetailChart onClose={() => setShowBtcDetail(false)} />;
+  }
+
   return (
     <div className="app-container">
       <header className="header" style={{ marginBottom: '1.5rem' }}>
@@ -189,10 +193,6 @@ function App() {
           )}
         </Droppable>
       </DragDropContext>
-      {showBtcDetail && createPortal(
-        <BtcDetailChart onClose={() => setShowBtcDetail(false)} />,
-        document.body
-      )}
     </div>
   );
 }
