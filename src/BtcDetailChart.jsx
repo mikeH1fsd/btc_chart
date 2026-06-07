@@ -16,7 +16,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   
-  const [isExtended, setIsExtended] = useState(interval === '1h');
+  const [isExtended, setIsExtended] = useState(false);
   const [isExtending, setIsExtending] = useState(false);
   
   const [showEma25, setShowEma25] = useState(true);
@@ -378,7 +378,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
 
     const loadInitialData = async () => {
       try {
-        let initialCandles = 43800;
+        let initialCandles = 8760; // 1h 1y
         if (interval === '15m') initialCandles = 8640; // ~3 months
         if (interval === '5m') initialCandles = 8640; // ~1 month
         
@@ -618,7 +618,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     setIsExtending(true);
     setLoadingProgress(0);
     try {
-        let fullCandles = 105120; // 3 years for 15m, 1 year for 5m
+        let fullCandles = 43800; // default 1h 5y
+        if (interval === '15m') fullCandles = 105120; // 3 years
+        if (interval === '5m') fullCandles = 105120; // 1 year
+        
         let currentCandles = candleDataRef.current.length;
         let remainingCandles = fullCandles - currentCandles;
         if (remainingCandles <= 0) {
