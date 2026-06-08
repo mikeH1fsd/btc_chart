@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CryptoChart from './CryptoChart';
+import FearGreedChart from './FearGreedChart';
 
 const STABLECOINS = ['USDCUSDT', 'FDUSDUSDT', 'TUSDUSDT', 'BUSDUSDT', 'DAIUSDT', 'EURUSDT'];
 
@@ -145,6 +146,7 @@ const TopCoinsDashboard = ({ onClose }) => {
         <h2 style={{ color: '#fff', fontSize: '1.8rem', fontWeight: 700, margin: 0 }}>
           🔥 Top 15 Cryptocurrencies by 24h Volume
         </h2>
+        <FearGreedChart />
         <button 
           onClick={onClose}
           style={{
