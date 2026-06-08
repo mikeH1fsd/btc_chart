@@ -142,11 +142,10 @@ const TopCoinsDashboard = ({ onClose }) => {
 
   return (
     <div style={{ padding: '20px', maxWidth: '1600px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
-      <div className="trending-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="trending-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ color: '#fff', fontSize: '1.8rem', fontWeight: 700, margin: 0 }}>
           🔥 Top 15 Cryptocurrencies by 24h Volume
         </h2>
-        <FearGreedChart />
         <button 
           onClick={onClose}
           style={{
@@ -165,6 +164,11 @@ const TopCoinsDashboard = ({ onClose }) => {
         >
           ← Back to Dashboard
         </button>
+      </div>
+
+      {/* Fear & Greed Index – full-width chart section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <FearGreedChart />
       </div>
 
       <div style={{ 
