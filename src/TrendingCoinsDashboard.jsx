@@ -335,7 +335,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
             onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
             onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', padding: '1.5rem' }}>
+            <div className="coin-card-inner-mobile" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
             <div className="coin-rank-mobile" style={{ 
               width: '40px', 
               height: '40px', 
@@ -346,21 +346,22 @@ const TrendingCoinsDashboard = ({ onClose }) => {
               justifyContent: 'center',
               fontSize: '1.2rem',
               fontWeight: 700,
-              marginRight: '20px',
-              color: coin.rank <= 3 ? '#fbbf24' : '#94a3b8'
+              marginRight: '15px',
+              color: coin.rank <= 3 ? '#fbbf24' : '#94a3b8',
+              flexShrink: 0
             }}>
               #{coin.rank}
             </div>
             
             {dataSource === 'coingecko' ? (
-              <img src={coin.image} alt={coin.name} style={{ width: '50px', height: '50px', borderRadius: '50%', marginRight: '20px' }} />
+              <img src={coin.image} alt={coin.name} style={{ width: '45px', height: '45px', borderRadius: '50%', marginRight: '15px', flexShrink: 0 }} />
             ) : (
-              <div className="coin-icon-placeholder" style={{ width: '50px', height: '50px', borderRadius: '50%', marginRight: '20px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+              <div className="coin-icon-placeholder" style={{ width: '45px', height: '45px', borderRadius: '50%', marginRight: '15px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
                 💎
               </div>
             )}
             
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: '150px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700 }}>{coin.name}</h3>
                 <span style={{ padding: '2px 8px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0' }}>
@@ -419,13 +420,14 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                 border: '1px solid rgba(255,255,255,0.1)',
                 padding: '4px 10px',
                 borderRadius: '12px',
-                background: 'rgba(0,0,0,0.2)'
+                background: 'rgba(0,0,0,0.2)',
+                whiteSpace: 'nowrap'
               }}>
-                View Chart
+                📈 View Chart
               </div>
             </div>
+            </div>
           </div>
-        </div>
           );
         })}
       </div>

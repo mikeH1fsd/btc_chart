@@ -640,6 +640,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
                 handleScroll: true,
                 handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
             });
+        } else if (measureStepRef.current === 3) {
+            // Dismiss on 3rd tap for mobile users
+            setMeasureActive(false);
         }
     });
     
@@ -1019,12 +1022,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       backgroundColor: '#0f172a',
       zIndex: 9999
     }}>
-      <div className="modal-header modal-header-responsive" style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: '70px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '0 2rem', borderBottom: '1px solid rgba(255,255,255,0.05)',
-        zIndex: 50, background: '#0f172a'
-      }}>
+      <div className="modal-header-responsive" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '70px', background: 'rgba(15, 23, 42, 0.95)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2rem', zIndex: 100, backdropFilter: 'blur(10px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.5rem' }}>{title}</h2>
           <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px', marginRight: '10px' }}>
@@ -1082,11 +1080,11 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           </div>
         </div>
         
-        <div className="modal-header-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="modal-header-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '4px' }}>
           
           {/* Measure Tool Button */}
           <button
-            onClick={() => setMeasureActive(!measureActive)}
+            onClick={() => setMeasureActive(prev => (prev === 2 ? false : !prev))}
             style={{
               background: measureActive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
               color: measureActive ? '#38bdf8' : '#94a3b8',
@@ -1182,23 +1180,23 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
               {isExtending ? `Extending (${loadingProgress}%)...` : `⚡ Extend Data`}
             </button>
           )}
-          
-          <button 
-            onClick={onClose}
-            style={{
-              background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer',
-              padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: '50%', transition: 'background 0.2s', marginLeft: '1rem'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
         </div>
+
+        <button 
+          onClick={onClose}
+          style={{
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer',
+            padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: '50%', transition: 'all 0.2s', marginLeft: '10px', flexShrink: 0
+          }}
+          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+          onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       
       <div className="modal-body-responsive" style={{ position: 'absolute', top: '70px', left: 0, right: 0, bottom: 0 }}>
