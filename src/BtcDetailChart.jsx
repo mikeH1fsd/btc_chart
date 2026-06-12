@@ -45,6 +45,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
   const measureStartRef = useRef(null);
   const measureCurrentRef = useRef(null);
   const chartRectRef = useRef(null);
+  const measureDragNodeRef = useRef(null); // 'start' or 'end'
   
   useEffect(() => {
      measureActiveRef.current = measureActive;
@@ -623,12 +624,13 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
 
     const intervalId = setInterval(fetchLiveCandle, 500);
 
-    // Native pointermove to polyfill touch dragging on mobile
+    // The handles capture their own pointer events
+    // This handlePointerMove is just for desktop "move without click" legacy support if needed
+    // But since we now rely on handles, we don't strictly need it, but keep it for desktop if measureStep === 2
     const handlePointerMove = (e) => {
         if (!measureActiveRef.current || measureStepRef.current !== 2) return;
         
-        // Only polyfill for touch events, since subscribeCrosshairMove handles mouse perfectly
-        if (e.pointerType === 'touch' || (e.pointerType === 'mouse' && e.buttons > 0)) {
+        if (e.pointerType === 'mouse' && e.buttons > 0) {
             if (!chartRectRef.current) chartRectRef.current = chartContainerRef.current.getBoundingClientRect();
             const rect = chartRectRef.current;
             const x = e.clientX - rect.left;
@@ -641,6 +643,39 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
             }
         }
     };
+
+    // Global drag listener for handles
+    const handleGlobalPointerMove = (e) => {
+        if (!measureDragNodeRef.current) return;
+        e.stopPropagation();
+        
+        if (!chartRectRef.current) chartRectRef.current = chartContainerRef.current.getBoundingClientRect();
+        const rect = chartRectRef.current;
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        let logical = null; let price = null;
+        try {
+            logical = chartInstanceRef.current.timeScale().coordinateToLogical(x);
+            price = seriesRef.current.coordinateToPrice(y);
+        } catch (err) {}
+        
+        if (logical !== null && price !== null) {
+            if (measureDragNodeRef.current === 'start') {
+                measureStartRef.current = { x, y, logical, price };
+            } else if (measureDragNodeRef.current === 'end') {
+                measureCurrentRef.current = { x, y, logical, price };
+            }
+        }
+    };
+    
+    const handleGlobalPointerUp = () => {
+        measureDragNodeRef.current = null;
+    };
+
+    window.addEventListener('pointermove', handleGlobalPointerMove, { capture: true, passive: false });
+    window.addEventListener('pointerup', handleGlobalPointerUp, { capture: true });
+    window.addEventListener('pointercancel', handleGlobalPointerUp, { capture: true });
 
     chartContainerRef.current.addEventListener('pointermove', handlePointerMove);
 
@@ -655,11 +690,24 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         if (logical === null || price === null) return;
 
         if (measureStepRef.current === 1) {
-            // Tap 1: Start measuring
+            // Tap 1: Place start point and current point, lock immediately
             chartRectRef.current = chartContainerRef.current.getBoundingClientRect();
             measureStartRef.current = { x: param.point.x, y: param.point.y, logical, price };
-            measureCurrentRef.current = { x: param.point.x, y: param.point.y, logical, price };
-            measureStepRef.current = 2;
+            
+            // Auto size the initial box so it's visible and handles are grabbable
+            const rectWidth = chartContainerRef.current.clientWidth;
+            const endX = param.point.x + Math.min(120, rectWidth * 0.15);
+            const endY = param.point.y - 60;
+            const endLogical = chartInstanceRef.current.timeScale().coordinateToLogical(endX);
+            const endPrice = seriesRef.current.coordinateToPrice(endY);
+            
+            measureCurrentRef.current = { x: endX, y: endY, logical: endLogical, price: endPrice };
+            measureStepRef.current = 3; // Lock it!
+            
+            chartInstanceRef.current.applyOptions({
+                handleScroll: true,
+                handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
+            });
         } else if (measureStepRef.current === 2) {
             // Tap 2: Lock
             measureStepRef.current = 3;
@@ -770,76 +818,76 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
            };
 
            const startX = getX(start);
-           const currentX = getX(current);
-           const startY = seriesRef.current.priceToCoordinate(start.price);
-           const currentY = seriesRef.current.priceToCoordinate(current.price);
-           
-           if (startX !== null && currentX !== null && startY !== null && currentY !== null) {
-              const left = Math.min(startX, currentX);
-              const top = Math.min(startY, currentY);
-              const width = Math.max(1, Math.abs(currentX - startX));
-              const height = Math.max(1, Math.abs(currentY - startY));
+      if (measureActiveRef.current && measureStartRef.current && measureCurrentRef.current && measureStepRef.current > 1) {
+          const startX = chartInstanceRef.current.timeScale().logicalToCoordinate(measureStartRef.current.logical);
+          const startY = seriesRef.current.priceToCoordinate(measureStartRef.current.price);
+          const currentX = chartInstanceRef.current.timeScale().logicalToCoordinate(measureCurrentRef.current.logical);
+          const currentY = seriesRef.current.priceToCoordinate(measureCurrentRef.current.price);
+          
+          if (startX !== null && startY !== null && currentX !== null && currentY !== null) {
+              const x = Math.min(startX, currentX);
+              const y = Math.min(startY, currentY);
+              const w = Math.abs(startX - currentX);
+              const h = Math.abs(startY - currentY);
               
               const svg = document.getElementById('tv-measure-svg');
-              const rectEl = document.getElementById('tv-measure-rect');
-              if (svg && rectEl) {
-                 svg.style.display = 'block';
-                 rectEl.setAttribute('x', left);
-                 rectEl.setAttribute('y', top);
-                 rectEl.setAttribute('width', width);
-                 rectEl.setAttribute('height', height);
-                 rectEl.setAttribute('fill', current.price >= start.price ? 'rgba(74, 222, 128, 0.15)' : 'rgba(248, 113, 113, 0.15)');
-                 rectEl.setAttribute('stroke', current.price >= start.price ? '#4ade80' : '#f87171');
+              const rect = document.getElementById('tv-measure-rect');
+              if (svg && rect) {
+                  svg.style.display = 'block';
+                  rect.setAttribute('x', x);
+                  rect.setAttribute('y', y);
+                  rect.setAttribute('width', w);
+                  rect.setAttribute('height', h);
+                  
+                  const isProfit = measureCurrentRef.current.price >= measureStartRef.current.price;
+                  rect.setAttribute('fill', isProfit ? 'rgba(56, 189, 248, 0.15)' : 'rgba(248, 113, 113, 0.15)');
+                  rect.setAttribute('stroke', isProfit ? '#38bdf8' : '#f87171');
+              }
+              
+              const handleStart = document.getElementById('tv-measure-handle-start');
+              const handleEnd = document.getElementById('tv-measure-handle-end');
+              if (handleStart && handleEnd) {
+                  handleStart.style.display = 'block';
+                  handleStart.style.transform = `translate3d(calc(${startX}px - 50%), calc(${startY}px - 50%), 0)`;
+                  handleEnd.style.display = 'block';
+                  handleEnd.style.transform = `translate3d(calc(${currentX}px - 50%), calc(${currentY}px - 50%), 0)`;
+              }
+              
+              const text = document.getElementById('tv-measure-text');
+              if (text) {
+                 text.style.display = 'flex';
+                 let textX = x + w/2;
+                 let textY = measureCurrentRef.current.price >= measureStartRef.current.price ? y - 70 : y + h + 10;
+                 text.style.transform = `translate3d(calc(${textX}px - 50%), ${textY}px, 0)`;
                  
-                 const text = document.getElementById('tv-measure-text');
-                 if (text) {
-                    text.style.display = 'flex';
-                    let textX = left + width/2;
-                    let textY = current.price >= start.price ? top - 55 : top + height + 10;
-                    text.style.transform = `translate3d(calc(${textX}px - 50%), ${textY}px, 0)`;
-                    
-                    const priceDiff = current.price - start.price;
-                    const pctDiff = (priceDiff / start.price) * 100;
-                    
-                    let bars = 0;
-                    if (current.logical !== undefined && start.logical !== undefined) {
-                        bars = Math.abs(Math.round(current.logical - start.logical));
-                    }
-                    
-                    let currentMinutes = 60;
-                    const iv = currentInterval;
-                    if (iv === '1d') currentMinutes = 1440;
-                    else if (iv === '4h') currentMinutes = 240;
-                    else if (iv === '30m') currentMinutes = 30;
-                    else if (iv === '15m') currentMinutes = 15;
-                    else if (iv === '5m') currentMinutes = 5;
-                    
-                    const timeDiffSeconds = bars * currentMinutes * 60;
-                    let timeStr = '';
-                    if (timeDiffSeconds >= 86400) timeStr = Math.floor(timeDiffSeconds / 86400) + 'd ' + Math.floor((timeDiffSeconds % 86400) / 3600) + 'h';
-                    else if (timeDiffSeconds >= 3600) timeStr = Math.floor(timeDiffSeconds / 3600) + 'h ' + Math.floor((timeDiffSeconds % 3600) / 60) + 'm';
-                    else timeStr = Math.floor(timeDiffSeconds / 60) + 'm';
-                    
-                    if (!document.getElementById('tv-measure-val-1')) {
-                        text.innerHTML = `
-                          <div id="tv-measure-val-1" style="font-weight: bold; font-size: 13px;"></div>
-                          <div style="color: #cbd5e1; display: flex; justify-content: space-between; gap: 15px; margin-top: 4px;">
-                            <span id="tv-measure-val-2"></span>
-                            <span id="tv-measure-val-3"></span>
-                          </div>
-                        `;
-                    }
-                    
-                    const val1 = document.getElementById('tv-measure-val-1');
-                    if (val1) {
-                        val1.style.color = priceDiff >= 0 ? '#4ade80' : '#f87171';
-                        val1.textContent = `${priceDiff >= 0 ? '+' : ''}${priceDiff.toFixed(2)} (${priceDiff >= 0 ? '+' : ''}${pctDiff.toFixed(2)}%)`;
-                    }
-                    const val2 = document.getElementById('tv-measure-val-2');
-                    if (val2) val2.textContent = `${bars} bars`;
-                    const val3 = document.getElementById('tv-measure-val-3');
-                    if (val3) val3.textContent = timeStr;
-                 }
+                 const priceDiff = measureCurrentRef.current.price - measureStartRef.current.price;
+                 const pctDiff = (priceDiff / measureStartRef.current.price) * 100;
+                 
+                 let bars = Math.abs(Math.round(measureCurrentRef.current.logical - measureStartRef.current.logical));
+                 
+                 let currentMinutes = 60;
+                 const iv = currentInterval;
+                 if (iv === '1d') currentMinutes = 1440;
+                 else if (iv === '4h') currentMinutes = 240;
+                 else if (iv === '30m') currentMinutes = 30;
+                 else if (iv === '15m') currentMinutes = 15;
+                 else if (iv === '5m') currentMinutes = 5;
+                 
+                 const timeDiffSeconds = bars * currentMinutes * 60;
+                 let timeStr = '';
+                 if (timeDiffSeconds >= 86400) timeStr = Math.floor(timeDiffSeconds / 86400) + 'd ' + Math.floor((timeDiffSeconds % 86400) / 3600) + 'h';
+                 else if (timeDiffSeconds >= 3600) timeStr = Math.floor(timeDiffSeconds / 3600) + 'h ' + Math.floor((timeDiffSeconds % 3600) / 60) + 'm';
+                 else timeStr = Math.floor(timeDiffSeconds / 60) + 'm';
+                 
+                 text.innerHTML = `
+                   <div style="font-weight: bold; font-size: 13px; color: ${priceDiff >= 0 ? '#4ade80' : '#f87171'}">
+                     ${priceDiff >= 0 ? '+' : ''}${priceDiff.toFixed(2)} (${priceDiff >= 0 ? '+' : ''}${pctDiff.toFixed(2)}%)
+                   </div>
+                   <div style="color: #cbd5e1; display: flex; justify-content: space-between; gap: 15px; margin-top: 4px;">
+                     <span>${bars} bars</span>
+                     <span>${timeStr}</span>
+                   </div>
+                 `;
               }
            }
       } else {
@@ -847,6 +895,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
            if (svg) svg.style.display = 'none';
            const text = document.getElementById('tv-measure-text');
            if (text) text.style.display = 'none';
+           const handleStart = document.getElementById('tv-measure-handle-start');
+           const handleEnd = document.getElementById('tv-measure-handle-end');
+           if (handleStart) handleStart.style.display = 'none';
+           if (handleEnd) handleEnd.style.display = 'none';
       }
 
       animationFrameId = requestAnimationFrame(syncOverlay);
@@ -857,6 +909,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
     return () => {
       clearInterval(intervalId);
       cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('pointermove', handleGlobalPointerMove, { capture: true });
+      window.removeEventListener('pointerup', handleGlobalPointerUp, { capture: true });
+      window.removeEventListener('pointercancel', handleGlobalPointerUp, { capture: true });
       if (chartContainerRef.current) {
           chartContainerRef.current.removeEventListener('pointermove', handlePointerMove);
       }
@@ -1049,6 +1104,8 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       </svg>
       <div id="tv-measure-text" style={{ position: 'absolute', top: 0, left: 0, transform: 'translate3d(0,0,0)', background: 'rgba(15, 23, 42, 0.95)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', color: '#f8fafc', fontSize: '12px', whiteSpace: 'nowrap', display: 'none', flexDirection: 'column', gap: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 101, pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
       </div>
+      <div id="tv-measure-handle-start" onPointerDown={(e) => { e.stopPropagation(); measureDragNodeRef.current = 'start'; }} style={{ position: 'absolute', top: 0, left: 0, width: '20px', height: '20px', borderRadius: '50%', background: '#0f172a', border: '2px solid #38bdf8', transform: 'translate(-50%, -50%)', display: 'none', zIndex: 102, cursor: 'grab', pointerEvents: 'auto', touchAction: 'none' }} />
+      <div id="tv-measure-handle-end" onPointerDown={(e) => { e.stopPropagation(); measureDragNodeRef.current = 'end'; }} style={{ position: 'absolute', top: 0, left: 0, width: '20px', height: '20px', borderRadius: '50%', background: '#0f172a', border: '2px solid #38bdf8', transform: 'translate(-50%, -50%)', display: 'none', zIndex: 102, cursor: 'grab', pointerEvents: 'auto', touchAction: 'none' }} />
       </>
     );
   };
