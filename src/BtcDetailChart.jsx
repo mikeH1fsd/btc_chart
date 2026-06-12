@@ -815,6 +815,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
               
               const svg = document.getElementById('tv-measure-svg');
               const rect = document.getElementById('tv-measure-rect');
+              const lineTop = document.getElementById('tv-measure-line-top');
+              const lineBottom = document.getElementById('tv-measure-line-bottom');
+              
               if (svg && rect) {
                   svg.style.display = 'block';
                   rect.setAttribute('x', x);
@@ -825,6 +828,18 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
                   const isProfit = measureCurrentRef.current.price >= measureStartRef.current.price;
                   rect.setAttribute('fill', isProfit ? 'rgba(56, 189, 248, 0.15)' : 'rgba(248, 113, 113, 0.15)');
                   rect.setAttribute('stroke', isProfit ? '#38bdf8' : '#f87171');
+                  
+                  if (lineTop && lineBottom) {
+                      lineTop.style.display = 'block';
+                      lineTop.setAttribute('y1', y);
+                      lineTop.setAttribute('y2', y);
+                      lineTop.setAttribute('stroke', isProfit ? '#38bdf8' : '#f87171');
+                      
+                      lineBottom.style.display = 'block';
+                      lineBottom.setAttribute('y1', y + h);
+                      lineBottom.setAttribute('y2', y + h);
+                      lineBottom.setAttribute('stroke', isProfit ? '#38bdf8' : '#f87171');
+                  }
               }
               
               const handleStart = document.getElementById('tv-measure-handle-start');
@@ -1083,6 +1098,8 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       </div>
 
       <svg id="tv-measure-svg" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', display: 'none', zIndex: 100 }}>
+         <line id="tv-measure-line-top" x1="0" y1="0" x2="100%" y2="0" stroke="#38bdf8" strokeWidth="1" strokeDasharray="4 4" display="none" />
+         <line id="tv-measure-line-bottom" x1="0" y1="0" x2="100%" y2="0" stroke="#38bdf8" strokeWidth="1" strokeDasharray="4 4" display="none" />
          <rect id="tv-measure-rect" x="0" y="0" width="0" height="0" fill="rgba(56, 189, 248, 0.15)" stroke="#38bdf8" strokeWidth="1" />
       </svg>
       <div id="tv-measure-text" style={{ position: 'absolute', top: 0, left: 0, transform: 'translate3d(0,0,0)', background: 'rgba(15, 23, 42, 0.95)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', color: '#f8fafc', fontSize: '12px', whiteSpace: 'nowrap', display: 'none', flexDirection: 'column', gap: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 101, pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
