@@ -8,6 +8,43 @@ const hexToRgb = (hex) => {
   return `${r}, ${g}, ${b}`;
 };
 
+const TradingViewWidget = ({ symbol }) => {
+  const container = useRef();
+
+  useEffect(() => {
+    container.current.innerHTML = '';
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.type = "text/javascript";
+    script.async = true;
+    script.innerHTML = `
+      {
+        "autosize": true,
+        "symbol": "MEXC:${symbol}",
+        "interval": "D",
+        "timezone": "Etc/UTC",
+        "theme": "dark",
+        "style": "1",
+        "locale": "en",
+        "enable_publishing": false,
+        "backgroundColor": "rgba(23, 27, 38, 1)",
+        "gridColor": "rgba(42, 46, 57, 0.06)",
+        "hide_top_toolbar": false,
+        "hide_legend": false,
+        "save_image": false,
+        "container_id": "tradingview_12345"
+      }
+    `;
+    container.current.appendChild(script);
+  }, [symbol]);
+
+  return (
+    <div className="tradingview-widget-container" ref={container} style={{ height: "100%", width: "100%" }}>
+      <div id="tradingview_12345" style={{ height: "calc(100% - 32px)", width: "100%" }}></div>
+    </div>
+  );
+};
+
 const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT', title = 'Bitcoin / USDT' }) => {
   const chartContainerRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -16,6 +53,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentInterval, setCurrentInterval] = useState(interval);
+  
+  const [useTradingView, setUseTradingView] = useState(false);
+  const [tvSymbol, setTvSymbol] = useState('');
   
   const [isExtended, setIsExtended] = useState(false);
   const [isExtending, setIsExtending] = useState(false);
@@ -484,6 +524,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           
           candleDataRef.current = data;
           oldestTimeRef.current = data[0].time * 1000;
+        } else {
+          setUseTradingView(true);
+          setTvSymbol(symbol.replace('USDT', ''));
         }
       } catch (err) {
         console.error('Initialization error:', err);
@@ -1304,11 +1347,17 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           </div>
         )}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-          <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />
-          
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 10, overflow: 'hidden' }}>
-             {renderOverlays()}
-          </div>
+          {useTradingView ? (
+            <TradingViewWidget symbol={tvSymbol} />
+          ) : (
+            <>
+              <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />
+              
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 10, overflow: 'hidden' }}>
+                 {renderOverlays()}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
