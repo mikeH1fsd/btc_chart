@@ -345,6 +345,23 @@ function App() {
                                   ))}
                                 </div>
                               )}
+                              {chart.id === 'xauusd' && (
+                                <button 
+                                  onClick={() => {
+                                    const prompt = 'Điều gì gây ra biến động giá vàng (XAU/USD) trên thị trường trong 24 giờ qua?';
+                                    window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank');
+                                  }}
+                                  style={{ 
+                                    background: 'transparent', border: `1px solid ${chart.color}`, color: chart.color, 
+                                    padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem',
+                                    transition: 'all 0.2s', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px'
+                                  }}
+                                  onMouseOver={(e) => { e.currentTarget.style.background = getBorderColor(chart.color, 0.1) }}
+                                  onMouseOut={(e) => { e.currentTarget.style.background = 'transparent' }}
+                                >
+                                  🤖 Hỏi AI
+                                </button>
+                              )}
                               <div 
                                 className="timeframe-badge" 
                                 style={chart.id !== 'usdhkd' ? { color: chart.color, background: getBorderColor(chart.color, 0.1) } : {}}
