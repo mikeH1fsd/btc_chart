@@ -205,9 +205,9 @@ const FearGreedChart = () => {
     <section className="glass-card" style={{ borderColor: status ? `${status.color}30` : 'var(--card-border)' }}>
       <div className="chart-header">
         <h2 className="chart-title">Crypto Fear & Greed Index</h2>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="chart-controls" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {latest && status && (
-            <div style={{
+            <div className="fear-greed-status" style={{
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
@@ -244,7 +244,7 @@ const FearGreedChart = () => {
             </div>
           )}
           {/* Year selector buttons */}
-          <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="year-selector" style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
             {[1, 2, 3, 5].map(y => (
               <button
                 key={y}
