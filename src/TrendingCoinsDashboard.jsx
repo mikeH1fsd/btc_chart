@@ -414,16 +414,41 @@ const TrendingCoinsDashboard = ({ onClose }) => {
               }}>
                 {coin.priceChange24h >= 0 ? '▲' : '▼'} {Math.abs(coin.priceChange24h).toFixed(2)}%
               </div>
-              <div style={{
-                fontSize: '0.75rem',
-                color: '#94a3b8',
-                border: '1px solid rgba(255,255,255,0.1)',
-                padding: '4px 10px',
-                borderRadius: '12px',
-                background: 'rgba(0,0,0,0.2)',
-                whiteSpace: 'nowrap'
-              }}>
-                📈 View Chart
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const prompt = `Tại sao đồng tiền ảo ${coin.name} (${coin.symbol}) lại được thảo luận sôi nổi và lọt top trending trên thị trường crypto trong 24 giờ qua?`;
+                    window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank');
+                  }}
+                  style={{
+                    fontSize: '0.75rem',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    boxShadow: '0 2px 5px rgba(59, 130, 246, 0.3)'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  🤖 Hỏi AI
+                </button>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#94a3b8',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  background: 'rgba(0,0,0,0.2)',
+                  whiteSpace: 'nowrap'
+                }}>
+                  📈 View Chart
+                </div>
               </div>
             </div>
             </div>
