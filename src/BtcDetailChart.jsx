@@ -622,94 +622,67 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
 
     const intervalId = setInterval(fetchLiveCandle, 500);
 
-    const startPosRef = { current: null };
+    const intervalId = setInterval(fetchLiveCandle, 500);
 
-    const handlePointerDown = (e) => {
-        if (!measureActiveRef.current || !chartContainerRef.current || !chartInstanceRef.current) return;
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-
-        startPosRef.current = { x: e.clientX, y: e.clientY };
-
-        if (measureStepRef.current === 1 || measureStepRef.current === 2) {
-            e.stopPropagation();
+    // Native pointermove to polyfill touch dragging on mobile
+    const handlePointerMove = (e) => {
+        if (!measureActiveRef.current || measureStepRef.current !== 2) return;
+        
+        // Only polyfill for touch events, since subscribeCrosshairMove handles mouse perfectly
+        if (e.pointerType === 'touch' || (e.pointerType === 'mouse' && e.buttons > 0)) {
             const rect = chartContainerRef.current.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             const logical = chartInstanceRef.current.timeScale().coordinateToLogical(x);
             const price = seriesRef.current.coordinateToPrice(y);
+            
             if (logical !== null && price !== null) {
-                if (measureStepRef.current === 1) {
-                    measureStartRef.current = { x, y, logical, price };
-                }
                 measureCurrentRef.current = { x, y, logical, price };
             }
         }
     };
 
-    const handlePointerMove = (e) => {
-        if (!measureActiveRef.current || !chartContainerRef.current || !chartInstanceRef.current) return;
-        if (measureStepRef.current === 1 || measureStepRef.current === 2) {
-            if (startPosRef.current) e.stopPropagation();
-            
-            if (measureStepRef.current === 2 || startPosRef.current) {
-                const rect = chartContainerRef.current.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const logical = chartInstanceRef.current.timeScale().coordinateToLogical(x);
-                const price = seriesRef.current.coordinateToPrice(y);
-                if (logical !== null && price !== null) {
-                    measureCurrentRef.current = { x, y, logical, price };
-                }
-            }
-        }
-    };
+    chartContainerRef.current.addEventListener('pointermove', handlePointerMove);
 
-    const handlePointerUp = (e) => {
-        if (!measureActiveRef.current || !chartContainerRef.current || !chartInstanceRef.current) {
-            startPosRef.current = null;
-            return;
-        }
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Use native Lightweight Charts click for perfect tap/click normalization
+    chart.subscribeClick((param) => {
+        if (!measureActiveRef.current) return;
+        if (!param.point) return;
 
-        const dx = startPosRef.current ? Math.abs(e.clientX - startPosRef.current.x) : 0;
-        const dy = startPosRef.current ? Math.abs(e.clientY - startPosRef.current.y) : 0;
-        const isTap = dx < 10 && dy < 10;
-        startPosRef.current = null;
+        const logical = param.logical ?? chartInstanceRef.current.timeScale().coordinateToLogical(param.point.x);
+        const price = seriesRef.current.coordinateToPrice(param.point.y);
+        
+        if (logical === null || price === null) return;
 
-        if (measureStepRef.current === 1 || measureStepRef.current === 2) {
-            e.stopPropagation();
-            if (measureStepRef.current === 1) {
-                measureStepRef.current = 2;
-            } else if (measureStepRef.current === 2) {
-                if (isTap) {
-                    measureStepRef.current = 3;
-                    chartInstanceRef.current.applyOptions({
-                        handleScroll: true,
-                        handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
-                    });
-                }
-            }
+        if (measureStepRef.current === 1) {
+            // Tap 1: Start measuring
+            measureStartRef.current = { x: param.point.x, y: param.point.y, logical, price };
+            measureCurrentRef.current = { x: param.point.x, y: param.point.y, logical, price };
+            measureStepRef.current = 2;
+        } else if (measureStepRef.current === 2) {
+            // Tap 2: Lock
+            measureStepRef.current = 3;
+            // Un-disable scroll so user can pan around while locked
+            chartInstanceRef.current.applyOptions({
+                handleScroll: true,
+                handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
+            });
         } else if (measureStepRef.current === 3) {
-            if (isTap) {
-                e.stopPropagation();
-                setMeasureActive(false);
-            }
-        }
-    };
-
-    const handleContextMenu = (e) => {
-        if (measureStepRef.current > 0) {
-            e.preventDefault();
-            e.stopPropagation();
+            // Tap 3: Dismiss
             setMeasureActive(false);
         }
-    };
+    });
 
-    chartContainerRef.current.addEventListener('pointerdown', handlePointerDown, { capture: true });
-    chartContainerRef.current.addEventListener('pointermove', handlePointerMove, { capture: true });
-    chartContainerRef.current.addEventListener('pointerup', handlePointerUp, { capture: true });
-    chartContainerRef.current.addEventListener('pointercancel', handlePointerUp, { capture: true });
-    chartContainerRef.current.addEventListener('contextmenu', handleContextMenu, { capture: true });
+    chart.subscribeCrosshairMove((param) => {
+        if (!measureActiveRef.current || measureStepRef.current !== 2 || !param.point) return;
+        
+        const logical = param.logical ?? chartInstanceRef.current.timeScale().coordinateToLogical(param.point.x);
+        const price = seriesRef.current.coordinateToPrice(param.point.y);
+        
+        if (logical !== null && price !== null) {
+            measureCurrentRef.current = { x: param.point.x, y: param.point.y, logical, price };
+        }
+    });
 
     let animationFrameId;
     const syncOverlay = () => {
@@ -866,11 +839,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       clearInterval(intervalId);
       cancelAnimationFrame(animationFrameId);
       if (chartContainerRef.current) {
-          chartContainerRef.current.removeEventListener('pointerdown', handlePointerDown, { capture: true });
-          chartContainerRef.current.removeEventListener('pointermove', handlePointerMove, { capture: true });
-          chartContainerRef.current.removeEventListener('pointerup', handlePointerUp, { capture: true });
-          chartContainerRef.current.removeEventListener('pointercancel', handlePointerUp, { capture: true });
-          chartContainerRef.current.removeEventListener('contextmenu', handleContextMenu, { capture: true });
+          chartContainerRef.current.removeEventListener('pointermove', handlePointerMove);
       }
       chart.remove();
     };
