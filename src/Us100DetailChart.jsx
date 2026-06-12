@@ -522,6 +522,15 @@ const Us100DetailChart = ({ onClose }) => {
             if (document.getElementById('tv-sl-handle')) document.getElementById('tv-sl-handle').style.top = slY + 'px';
             if (document.getElementById('tv-center-handle')) document.getElementById('tv-center-handle').style.top = entryY + 'px';
             
+            if (document.getElementById('tv-tp-circle')) {
+              document.getElementById('tv-tp-circle').style.top = tpY + 'px';
+              document.getElementById('tv-tp-circle').style.left = startX + 'px';
+            }
+            if (document.getElementById('tv-sl-circle')) {
+              document.getElementById('tv-sl-circle').style.top = slY + 'px';
+              document.getElementById('tv-sl-circle').style.left = startX + 'px';
+            }
+            
             if (document.getElementById('tv-floating-panel')) {
                document.getElementById('tv-floating-panel').style.left = (startX + boxWidth + 15) + 'px';
                document.getElementById('tv-floating-panel').style.top = entryY + 'px';
@@ -674,6 +683,8 @@ const Us100DetailChart = ({ onClose }) => {
         <div id="tv-center-handle" className="tv-handle" style={{ position: 'absolute', height: '24px', left: 0, right: 0, transform: 'translateY(-50%)', cursor: 'move', pointerEvents: 'auto', zIndex: 30 }} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'center'; setDragging('center'); }} />
         <div id="tv-tp-handle" className="tv-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'tp'; setDragging('tp'); }} />
         <div id="tv-sl-handle" className="tv-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'sl'; setDragging('sl'); }} />
+        <div id="tv-tp-circle" style={{ position: 'absolute', width: '12px', height: '12px', borderRadius: '50%', background: '#0f172a', border: `2px solid ${profitBorder}`, transform: 'translate(-50%, -50%)', cursor: 'ns-resize', pointerEvents: 'auto', zIndex: 45 }} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'tp'; setDragging('tp'); }} />
+        <div id="tv-sl-circle" style={{ position: 'absolute', width: '12px', height: '12px', borderRadius: '50%', background: '#0f172a', border: `2px solid ${lossBorder}`, transform: 'translate(-50%, -50%)', cursor: 'ns-resize', pointerEvents: 'auto', zIndex: 45 }} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'sl'; setDragging('sl'); }} />
       </div>
     );
   };
