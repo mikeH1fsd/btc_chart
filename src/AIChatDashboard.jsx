@@ -25,25 +25,21 @@ const AIChatDashboard = ({ onClose }) => {
     setIsLoading(true);
 
     try {
-      // Build context from previous messages
-      let context = messages.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
-      let fullPrompt = `Context:\n${context}\n\nUser: ${userMessage}\nAssistant:`;
+      // Build context
+      let context = messages.slice(-4).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+      let fullPrompt = `Context:\n${context}\n\nUser: ${userMessage}\n\nHãy phân tích và trả lời câu hỏi trên:`;
 
-      const systemPrompt = "Bạn là chuyên gia phân tích chứng khoán và crypto nhiệt tình, trả lời ngắn gọn, súc tích bằng tiếng Việt.";
+      // Open ChatGPT in a new tab
+      window.open(`https://chatgpt.com/?q=${encodeURIComponent(fullPrompt)}`, '_blank');
       
-      const response = await fetch(`https://text.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?system=${encodeURIComponent(systemPrompt)}`);
-      
-      if (!response.ok) {
-        throw new Error('API Request failed');
-      }
-      
-      const data = await response.text();
-      
-      setMessages(prev => [...prev, { role: 'assistant', content: data }]);
+      setTimeout(() => {
+        setMessages(prev => [...prev, { role: 'assistant', content: '✅ Mình đã mở một tab mới và đẩy câu hỏi của bạn sang **ChatGPT chính chủ**.\n\n⚠️ **Lưu ý nhỏ:** Vì lý do bảo mật của Google Chrome, web không thể tự động bấm gửi. Bạn vui lòng **chuyển sang tab ChatGPT vừa mở và nhấn phím Enter** để nhận câu trả lời cực chuẩn nhé!' }]);
+        setIsLoading(false);
+      }, 1000);
+
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau!' }]);
-    } finally {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, hệ thống bị lỗi khi mở tab mới!' }]);
       setIsLoading(false);
     }
   };
