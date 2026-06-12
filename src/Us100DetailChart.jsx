@@ -475,15 +475,19 @@ const Us100DetailChart = ({ onClose }) => {
 
     const intervalId = setInterval(fetchLiveCandle, 1000);
 
+    let lastSyncStateStr = '';
     let animationFrameId;
     const syncOverlay = () => {
+      let currentStateStr = '';
+      let posData = null;
+
+      // 1. Calculate values
       if (seriesRef.current && (positionRef.current || dragPositionRef.current) && chartInstanceRef.current) {
         const activePos = dragPositionRef.current || positionRef.current;
         const entryY = seriesRef.current.priceToCoordinate(activePos.entry);
         const tpY = seriesRef.current.priceToCoordinate(activePos.tp);
         const slY = seriesRef.current.priceToCoordinate(activePos.sl);
         const startX = chartInstanceRef.current.timeScale().timeToCoordinate(activePos.startTime);
-        const boxWidth = 250;
         
         if (entryY !== null && tpY !== null && slY !== null && startX !== null) {
           const isLong = activePos.type === 'long';
@@ -495,6 +499,25 @@ const Us100DetailChart = ({ onClose }) => {
           const profitUsd = isLong ? (activePos.tp - activePos.entry - spread) * activePos.lots : (activePos.entry - activePos.tp - spread) * activePos.lots;
           const lossUsd = isLong ? (activePos.sl - activePos.entry - spread) * activePos.lots : (activePos.entry - activePos.sl - spread) * activePos.lots;
           
+          posData = { entryY, tpY, slY, startX, profitTop, profitHeight, lossTop, lossHeight, profitUsd, lossUsd, activePos, boxWidth: 250 };
+          currentStateStr += `pos_${entryY}_${tpY}_${slY}_${startX}_${profitTop}_${profitHeight}_${lossTop}_${lossHeight}_${profitUsd}_${lossUsd}_${activePos.lots}_${spread}_`;
+        } else {
+          currentStateStr += 'pos_null_';
+        }
+      } else {
+        currentStateStr += 'pos_null_';
+      }
+
+      // 2. Diff with last state
+      if (currentStateStr === lastSyncStateStr) {
+          animationFrameId = requestAnimationFrame(syncOverlay);
+          return;
+      }
+      lastSyncStateStr = currentStateStr;
+
+      // 3. Apply DOM updates
+      if (posData) {
+          const { entryY, tpY, slY, startX, profitTop, profitHeight, lossTop, lossHeight, profitUsd, lossUsd, activePos, boxWidth } = posData;
           if (document.getElementById('tv-overlay-container')) document.getElementById('tv-overlay-container').style.display = 'block';
           
           if (document.getElementById('tv-profit-zone')) {
@@ -545,9 +568,6 @@ const Us100DetailChart = ({ onClose }) => {
             if (document.getElementById('tv-rr-text')) {
                document.getElementById('tv-rr-text').innerText = (Math.abs(profitUsd) / Math.max(0.0001, Math.abs(lossUsd))).toFixed(2);
             }
-        } else {
-          if (document.getElementById('tv-overlay-container')) document.getElementById('tv-overlay-container').style.display = 'none';
-        }
       } else {
         if (document.getElementById('tv-overlay-container')) document.getElementById('tv-overlay-container').style.display = 'none';
       }

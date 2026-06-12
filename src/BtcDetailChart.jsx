@@ -776,15 +776,20 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         }
     });
 
+    let lastSyncStateStr = '';
     let animationFrameId;
     const syncOverlay = () => {
+      let currentStateStr = '';
+      let posData = null;
+      let measData = null;
+
+      // 1. Calculate values
       if (seriesRef.current && (positionRef.current || dragPositionRef.current) && chartInstanceRef.current) {
         const activePos = dragPositionRef.current || positionRef.current;
         const entryY = seriesRef.current.priceToCoordinate(activePos.entry);
         const tpY = seriesRef.current.priceToCoordinate(activePos.tp);
         const slY = seriesRef.current.priceToCoordinate(activePos.sl);
         const startX = chartInstanceRef.current.timeScale().timeToCoordinate(activePos.startTime);
-        const boxWidth = 250;
         
         if (entryY !== null && tpY !== null && slY !== null && startX !== null) {
           const isLong = activePos.type === 'long';
@@ -796,6 +801,52 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           const profitUsd = isLong ? (activePos.tp - activePos.entry - spread) * activePos.lots : (activePos.entry - activePos.tp - spread) * activePos.lots;
           const lossUsd = isLong ? (activePos.sl - activePos.entry - spread) * activePos.lots : (activePos.entry - activePos.sl - spread) * activePos.lots;
           
+          posData = { entryY, tpY, slY, startX, profitTop, profitHeight, lossTop, lossHeight, profitUsd, lossUsd, activePos, boxWidth: 250 };
+          currentStateStr += `pos_${entryY}_${tpY}_${slY}_${startX}_${profitTop}_${profitHeight}_${lossTop}_${lossHeight}_${profitUsd}_${lossUsd}_${activePos.lots}_${spread}_`;
+        } else {
+          currentStateStr += 'pos_null_';
+        }
+      } else {
+        currentStateStr += 'pos_null_';
+      }
+
+      if (measureActiveRef.current && measureStartRef.current && measureCurrentRef.current && measureStepRef.current > 1) {
+          const startX = chartInstanceRef.current.timeScale().logicalToCoordinate(measureStartRef.current.logical);
+          const startY = seriesRef.current.priceToCoordinate(measureStartRef.current.price);
+          const currentX = chartInstanceRef.current.timeScale().logicalToCoordinate(measureCurrentRef.current.logical);
+          const currentY = seriesRef.current.priceToCoordinate(measureCurrentRef.current.price);
+          
+          if (startX !== null && startY !== null && currentX !== null && currentY !== null) {
+              const rectX = Math.min(startX, currentX);
+              const rectY = Math.min(startY, currentY);
+              const rectWidth = Math.abs(currentX - startX);
+              const rectHeight = Math.abs(currentY - startY);
+              
+              const priceDiff = measureCurrentRef.current.price - measureStartRef.current.price;
+              const pctDiff = (priceDiff / measureStartRef.current.price) * 100;
+              const bars = Math.abs(measureCurrentRef.current.logical - measureStartRef.current.logical);
+              
+              const timeDiffSeconds = bars * getMultiplier(interval) * 60;
+              
+              measData = { startX, startY, currentX, currentY, rectX, rectY, rectWidth, rectHeight, priceDiff, pctDiff, bars, timeDiffSeconds };
+              currentStateStr += `meas_${startX}_${startY}_${currentX}_${currentY}_${rectX}_${rectY}_${rectWidth}_${rectHeight}_${priceDiff}_${pctDiff}_${bars}_`;
+          } else {
+              currentStateStr += 'meas_null_';
+          }
+      } else {
+          currentStateStr += 'meas_null_';
+      }
+
+      // 2. Diff with last state
+      if (currentStateStr === lastSyncStateStr) {
+          animationFrameId = requestAnimationFrame(syncOverlay);
+          return;
+      }
+      lastSyncStateStr = currentStateStr;
+
+      // 3. Apply DOM updates
+      if (posData) {
+          const { entryY, tpY, slY, startX, profitTop, profitHeight, lossTop, lossHeight, profitUsd, lossUsd, activePos, boxWidth } = posData;
           if (document.getElementById('tv-overlay-container')) document.getElementById('tv-overlay-container').style.display = 'block';
           
           if (document.getElementById('tv-profit-zone')) {
@@ -849,21 +900,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         } else {
           if (document.getElementById('tv-overlay-container')) document.getElementById('tv-overlay-container').style.display = 'none';
         }
-      } else {
-        if (document.getElementById('tv-overlay-container')) document.getElementById('tv-overlay-container').style.display = 'none';
-      }
       
-      if (measureActiveRef.current && measureStartRef.current && measureCurrentRef.current && measureStepRef.current > 1) {
-          const startX = chartInstanceRef.current.timeScale().logicalToCoordinate(measureStartRef.current.logical);
-          const startY = seriesRef.current.priceToCoordinate(measureStartRef.current.price);
-          const currentX = chartInstanceRef.current.timeScale().logicalToCoordinate(measureCurrentRef.current.logical);
-          const currentY = seriesRef.current.priceToCoordinate(measureCurrentRef.current.price);
-          
-          if (startX !== null && startY !== null && currentX !== null && currentY !== null) {
-              const x = Math.min(startX, currentX);
-              const y = Math.min(startY, currentY);
-              const w = Math.abs(startX - currentX);
-              const h = Math.abs(startY - currentY);
+      if (measData) {
+              const { startX, startY, currentX, currentY, rectX, rectY, rectWidth, rectHeight, priceDiff, pctDiff, bars, timeDiffSeconds } = measData;
               
               const svg = document.getElementById('tv-measure-svg');
               const rect = document.getElementById('tv-measure-rect');
@@ -872,24 +911,24 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
               
               if (svg && rect) {
                   svg.style.display = 'block';
-                  rect.setAttribute('x', x);
-                  rect.setAttribute('y', y);
-                  rect.setAttribute('width', w);
-                  rect.setAttribute('height', h);
+                  rect.setAttribute('x', rectX);
+                  rect.setAttribute('y', rectY);
+                  rect.setAttribute('width', rectWidth);
+                  rect.setAttribute('height', rectHeight);
                   
-                  const isProfit = measureCurrentRef.current.price >= measureStartRef.current.price;
+                  const isProfit = priceDiff >= 0;
                   rect.setAttribute('fill', isProfit ? 'rgba(56, 189, 248, 0.15)' : 'rgba(248, 113, 113, 0.15)');
                   rect.setAttribute('stroke', isProfit ? '#38bdf8' : '#f87171');
                   
                   if (lineTop && lineBottom) {
                       lineTop.style.display = 'block';
-                      lineTop.setAttribute('y1', y);
-                      lineTop.setAttribute('y2', y);
+                      lineTop.setAttribute('y1', rectY);
+                      lineTop.setAttribute('y2', rectY);
                       lineTop.setAttribute('stroke', isProfit ? '#38bdf8' : '#f87171');
                       
                       lineBottom.style.display = 'block';
-                      lineBottom.setAttribute('y1', y + h);
-                      lineBottom.setAttribute('y2', y + h);
+                      lineBottom.setAttribute('y1', rectY + rectHeight);
+                      lineBottom.setAttribute('y2', rectY + rectHeight);
                       lineBottom.setAttribute('stroke', isProfit ? '#38bdf8' : '#f87171');
                   }
               }
@@ -906,24 +945,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
               const text = document.getElementById('tv-measure-text');
               if (text) {
                  text.style.display = 'flex';
-                 let textX = x + w/2;
-                 let textY = measureCurrentRef.current.price >= measureStartRef.current.price ? y - 70 : y + h + 10;
+                 let textX = rectX + rectWidth/2;
+                 let textY = priceDiff >= 0 ? rectY - 70 : rectY + rectHeight + 10;
                  text.style.transform = `translate3d(calc(${textX}px - 50%), ${textY}px, 0)`;
                  
-                 const priceDiff = measureCurrentRef.current.price - measureStartRef.current.price;
-                 const pctDiff = (priceDiff / measureStartRef.current.price) * 100;
-                 
-                 let bars = Math.abs(Math.round(measureCurrentRef.current.logical - measureStartRef.current.logical));
-                 
-                 let currentMinutes = 60;
-                 const iv = currentInterval;
-                 if (iv === '1d') currentMinutes = 1440;
-                 else if (iv === '4h') currentMinutes = 240;
-                 else if (iv === '30m') currentMinutes = 30;
-                 else if (iv === '15m') currentMinutes = 15;
-                 else if (iv === '5m') currentMinutes = 5;
-                 
-                 const timeDiffSeconds = bars * currentMinutes * 60;
                  let timeStr = '';
                  if (timeDiffSeconds >= 86400) timeStr = Math.floor(timeDiffSeconds / 86400) + 'd ' + Math.floor((timeDiffSeconds % 86400) / 3600) + 'h';
                  else if (timeDiffSeconds >= 3600) timeStr = Math.floor(timeDiffSeconds / 3600) + 'h ' + Math.floor((timeDiffSeconds % 3600) / 60) + 'm';
@@ -939,7 +964,6 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
                    </div>
                  `;
               }
-          }
       } else {
            const svg = document.getElementById('tv-measure-svg');
            if (svg) svg.style.display = 'none';
