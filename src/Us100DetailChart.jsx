@@ -499,8 +499,9 @@ const Us100DetailChart = ({ onClose }) => {
           const profitUsd = isLong ? (activePos.tp - activePos.entry - spread) * activePos.lots : (activePos.entry - activePos.tp - spread) * activePos.lots;
           const lossUsd = isLong ? (activePos.sl - activePos.entry - spread) * activePos.lots : (activePos.entry - activePos.sl - spread) * activePos.lots;
           
-          posData = { entryY, tpY, slY, startX, profitTop, profitHeight, lossTop, lossHeight, profitUsd, lossUsd, activePos, boxWidth: 250 };
-          currentStateStr += `pos_${entryY}_${tpY}_${slY}_${startX}_${profitTop}_${profitHeight}_${lossTop}_${lossHeight}_${profitUsd}_${lossUsd}_${activePos.lots}_${spread}_`;
+          const boxWidth = activePos.boxWidth || 250;
+          posData = { entryY, tpY, slY, startX, profitTop, profitHeight, lossTop, lossHeight, profitUsd, lossUsd, activePos, boxWidth };
+          currentStateStr += `pos_${entryY}_${tpY}_${slY}_${startX}_${profitTop}_${profitHeight}_${lossTop}_${lossHeight}_${profitUsd}_${lossUsd}_${activePos.lots}_${spread}_${boxWidth}_`;
         } else {
           currentStateStr += 'pos_null_';
         }
@@ -552,6 +553,10 @@ const Us100DetailChart = ({ onClose }) => {
             if (document.getElementById('tv-sl-circle')) {
               document.getElementById('tv-sl-circle').style.top = slY + 'px';
               document.getElementById('tv-sl-circle').style.left = startX + 'px';
+            }
+            if (document.getElementById('tv-width-circle')) {
+              document.getElementById('tv-width-circle').style.top = entryY + 'px';
+              document.getElementById('tv-width-circle').style.left = (startX + boxWidth) + 'px';
             }
             
             if (document.getElementById('tv-floating-panel')) {
@@ -607,9 +612,23 @@ const Us100DetailChart = ({ onClose }) => {
             sl: prev.sl + priceDelta,
             startTime: newTime !== null ? newTime : prev.startTime
           };
+        } else if (draggingRef.current === 'width') {
+           const startX = chartInstanceRef.current.timeScale().timeToCoordinate(prev.startTime);
+           if (startX !== null) {
+               const newWidth = Math.max(50, x - startX);
+               dragPositionRef.current = { ...prev, boxWidth: newWidth };
+           }
         } else {
           dragPositionRef.current = { ...prev, [draggingRef.current]: newPrice };
         }
+      } else if (draggingRef.current === 'width') {
+         // Fallback if coordinateToPrice fails but we're dragging width
+         const prev = dragPositionRef.current || positionRef.current;
+         const startX = chartInstanceRef.current.timeScale().timeToCoordinate(prev.startTime);
+         if (startX !== null) {
+             const newWidth = Math.max(50, x - startX);
+             dragPositionRef.current = { ...prev, boxWidth: newWidth };
+         }
       }
     };
     
@@ -705,6 +724,7 @@ const Us100DetailChart = ({ onClose }) => {
         <div id="tv-sl-handle" className="tv-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'sl'; setDragging('sl'); }} />
         <div id="tv-tp-circle" style={{ position: 'absolute', width: '24px', height: '24px', borderRadius: '50%', background: '#0f172a', border: `3px solid ${profitBorder}`, transform: 'translate(-50%, -50%)', cursor: 'ns-resize', pointerEvents: 'auto', zIndex: 45, touchAction: 'none' }} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'tp'; setDragging('tp'); }} />
         <div id="tv-sl-circle" style={{ position: 'absolute', width: '24px', height: '24px', borderRadius: '50%', background: '#0f172a', border: `3px solid ${lossBorder}`, transform: 'translate(-50%, -50%)', cursor: 'ns-resize', pointerEvents: 'auto', zIndex: 45, touchAction: 'none' }} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'sl'; setDragging('sl'); }} />
+        <div id="tv-width-circle" style={{ position: 'absolute', width: '24px', height: '24px', borderRadius: '50%', background: '#0f172a', border: `3px solid #cbd5e1`, transform: 'translate(-50%, -50%)', cursor: 'ew-resize', pointerEvents: 'auto', zIndex: 45, touchAction: 'none' }} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'width'; setDragging('width'); }} />
       </div>
     );
   };
