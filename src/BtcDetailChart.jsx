@@ -20,7 +20,7 @@ const TradingViewWidget = ({ symbol }) => {
     script.innerHTML = `
       {
         "autosize": true,
-        "symbol": "MEXC:${symbol}",
+        "symbol": "${symbol}",
         "interval": "D",
         "timezone": "Etc/UTC",
         "theme": "dark",
@@ -526,7 +526,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           oldestTimeRef.current = data[0].time * 1000;
         } else {
           setUseTradingView(true);
-          setTvSymbol(symbol.replace('USDT', ''));
+          setTvSymbol(`MEXC:${symbol}`);
         }
       } catch (err) {
         console.error('Initialization error:', err);
