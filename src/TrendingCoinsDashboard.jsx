@@ -418,7 +418,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    const prompt = `Tại sao đồng tiền ảo ${coin.name} (${coin.symbol}) lại được thảo luận sôi nổi và lọt top trending trên thị trường crypto trong 24 giờ qua?`;
+                    const prompt = `Tại sao đồng tiền ảo ${coin.name} (${coin.symbol}) lại được thảo luận sôi nổi và lọt top trending trên thị trường crypto trong 24 giờ qua? Phản ứng cộng đồng trong 24h qua và tỉ lệ tiêu cực/tích cực ra sao?`;
                     window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank');
                   }}
                   style={{
