@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CryptoChart from './CryptoChart';
 import FearGreedChart from './FearGreedChart';
+import BtcDetailChart from './BtcDetailChart';
 
 const STABLECOINS = ['USDCUSDT', 'FDUSDUSDT', 'TUSDUSDT', 'BUSDUSDT', 'DAIUSDT', 'EURUSDT'];
 
@@ -19,6 +20,7 @@ const TopCoinsDashboard = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statsMap, setStatsMap] = useState({});
+  const [detailChartConfig, setDetailChartConfig] = useState(null);
 
   useEffect(() => {
     const fetchTopCoins = async () => {
@@ -140,6 +142,18 @@ const TopCoinsDashboard = ({ onClose }) => {
     return <div style={{ padding: '2rem', textAlign: 'center', color: '#e2e8f0' }}>Loading top coins data from Binance...</div>;
   }
 
+  if (detailChartConfig) {
+    return (
+      <BtcDetailChart 
+        onClose={() => setDetailChartConfig(null)} 
+        interval={detailChartConfig.interval} 
+        years={detailChartConfig.years}
+        symbol={detailChartConfig.symbol}
+        title={detailChartConfig.title}
+      />
+    );
+  }
+
   return (
     <div style={{ padding: '20px', maxWidth: '1600px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
       <div className="trending-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -240,23 +254,49 @@ const TopCoinsDashboard = ({ onClose }) => {
                   </div>
                 )}
                 
-                <button 
-                  onClick={() => handleDataLoaded(coin.symbol, { isExpanded: !stats.isExpanded })}
-                  style={{
-                    padding: '8px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#e2e8f0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                  onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                >
-                  {stats.isExpanded ? 'Hide Chart' : 'Extend Chart'}
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button 
+                    onClick={() => handleDataLoaded(coin.symbol, { isExpanded: !stats.isExpanded })}
+                    style={{
+                      flex: 1,
+                      padding: '8px',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#e2e8f0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    {stats.isExpanded ? 'Hide Chart' : 'Extend Chart'}
+                  </button>
+                  
+                  {stats.isExpanded && (
+                    <button 
+                      onClick={() => setDetailChartConfig({ interval: '1h', years: 5, symbol: coin.symbol, title: `${coin.baseAsset} / USDT` })}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                        border: 'none',
+                        color: 'white',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)'
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 15px rgba(59, 130, 246, 0.4)'; }}
+                      onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(59, 130, 246, 0.3)'; }}
+                    >
+                      🔍 Full 1H Chart
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );

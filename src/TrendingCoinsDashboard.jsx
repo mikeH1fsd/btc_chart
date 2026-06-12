@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BtcDetailChart from './BtcDetailChart';
 
 // Simple in-memory cache to prevent refetching when navigating back
 let memoryCache = {
@@ -13,6 +14,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(!memoryCache.coingecko);
   const [error, setError] = useState(null);
   const [sentiments, setSentiments] = useState({...memoryCache.sentiments});
+  const [detailChartConfig, setDetailChartConfig] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -233,6 +235,18 @@ const TrendingCoinsDashboard = ({ onClose }) => {
     );
   }
 
+  if (detailChartConfig) {
+    return (
+      <BtcDetailChart 
+        onClose={() => setDetailChartConfig(null)} 
+        interval={detailChartConfig.interval} 
+        years={detailChartConfig.years}
+        symbol={detailChartConfig.symbol}
+        title={detailChartConfig.title}
+      />
+    );
+  }
+
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
       <div className="trending-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -308,16 +322,20 @@ const TrendingCoinsDashboard = ({ onClose }) => {
           <div 
             key={coin.id}
             className="glass-card coin-card-mobile"
+            onClick={() => {
+              setDetailChartConfig({ interval: '1h', years: 5, symbol: `${coin.symbol.toUpperCase()}USDT`, title: `${coin.name} / USDT` });
+            }}
             style={{
               display: 'flex',
-              alignItems: 'center',
-              padding: '1.5rem',
-              transition: 'transform 0.2s',
-              cursor: 'default'
+              flexDirection: 'column',
+              transition: 'transform 0.2s, background 0.2s',
+              cursor: 'pointer',
+              overflow: 'hidden'
             }}
-            onMouseOver={e => e.currentTarget.style.transform = 'translateX(10px)'}
-            onMouseOut={e => e.currentTarget.style.transform = 'translateX(0)'}
+            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
           >
+            <div style={{ display: 'flex', alignItems: 'center', padding: '1.5rem' }}>
             <div className="coin-rank-mobile" style={{ 
               width: '40px', 
               height: '40px', 
@@ -382,7 +400,7 @@ const TrendingCoinsDashboard = ({ onClose }) => {
               </div>
             </div>
             
-            <div className="coin-price-mobile" style={{ textAlign: 'right' }}>
+            <div className="coin-price-mobile" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
               <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>
                 {typeof coin.price === 'number' ? `$${coin.price.toFixed(coin.price < 0.01 ? 6 : 2)}` : String(coin.price).replace('$', '~$')}
               </div>
@@ -390,12 +408,24 @@ const TrendingCoinsDashboard = ({ onClose }) => {
                 fontSize: '1rem', 
                 fontWeight: 600,
                 color: coin.priceChange24h >= 0 ? '#34d399' : '#f87171',
-                marginTop: '4px'
+                marginTop: '4px',
+                marginBottom: '10px'
               }}>
                 {coin.priceChange24h >= 0 ? '▲' : '▼'} {Math.abs(coin.priceChange24h).toFixed(2)}%
               </div>
+              <div style={{
+                fontSize: '0.75rem',
+                color: '#94a3b8',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '4px 10px',
+                borderRadius: '12px',
+                background: 'rgba(0,0,0,0.2)'
+              }}>
+                View Chart
+              </div>
             </div>
           </div>
+        </div>
           );
         })}
       </div>

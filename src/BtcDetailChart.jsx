@@ -8,16 +8,18 @@ const hexToRgb = (hex) => {
   return `${r}, ${g}, ${b}`;
 };
 
-const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
+const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT', title = 'Bitcoin / USDT' }) => {
   const chartContainerRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const seriesRef = useRef(null);
   
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [currentInterval, setCurrentInterval] = useState(interval);
   
   const [isExtended, setIsExtended] = useState(false);
   const [isExtending, setIsExtending] = useState(false);
+  const [extendYears, setExtendYears] = useState(1);
   
   const [showEma25, setShowEma25] = useState(true);
   const [showEma200, setShowEma200] = useState(true);
@@ -36,6 +38,34 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
+
+  const [measureActive, setMeasureActive] = useState(false);
+  const measureStepRef = useRef(0); // 0: inactive, 1: ready, 2: measuring, 3: locked
+  const measureStartRef = useRef(null);
+  const measureCurrentRef = useRef(null);
+  
+  useEffect(() => {
+     if (measureActive) {
+        measureStepRef.current = 1;
+        measureStartRef.current = null;
+        measureCurrentRef.current = null;
+     } else {
+        measureStepRef.current = 0;
+        measureStartRef.current = null;
+        measureCurrentRef.current = null;
+     }
+     
+     if (chartInstanceRef.current) {
+        chartInstanceRef.current.applyOptions({
+           handleScroll: !measureActive,
+           handleScale: {
+             axisPressedMouseMove: !measureActive,
+             mouseWheel: true,
+             pinch: true,
+           }
+        });
+     }
+  }, [measureActive]);
   
   const oldestTimeRef = useRef(null);
   const isFetchingRef = useRef(false);
@@ -49,8 +79,11 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
 
   const getMultiplier = (targetMinutes) => {
     let currentMinutes = 60;
-    if (interval === '15m') currentMinutes = 15;
-    if (interval === '5m') currentMinutes = 5;
+    if (currentInterval === '1d') currentMinutes = 1440;
+    else if (currentInterval === '4h') currentMinutes = 240;
+    else if (currentInterval === '30m') currentMinutes = 30;
+    else if (currentInterval === '15m') currentMinutes = 15;
+    else if (currentInterval === '5m') currentMinutes = 5;
     return Math.max(1, targetMinutes / currentMinutes);
   };
 
@@ -236,12 +269,15 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
       for (let i = 0; i < batches; i++) {
         const promises = [];
         for (let j = 0; j < 3; j++) {
-          let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}&endTime=${currentEndTime}`;
+          let url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${currentInterval}&limit=${limit}&endTime=${currentEndTime}`;
           promises.push(fetch(url).then(res => res.json()));
           
           let msPerCandle = 60 * 60 * 1000;
-          if (interval === '15m') msPerCandle = 15 * 60 * 1000;
-          if (interval === '5m') msPerCandle = 5 * 60 * 1000;
+          if (currentInterval === '1d') msPerCandle = 24 * 60 * 60 * 1000;
+          else if (currentInterval === '4h') msPerCandle = 4 * 60 * 60 * 1000;
+          else if (currentInterval === '30m') msPerCandle = 30 * 60 * 1000;
+          else if (currentInterval === '15m') msPerCandle = 15 * 60 * 1000;
+          else if (currentInterval === '5m') msPerCandle = 5 * 60 * 1000;
           
           currentEndTime -= limit * msPerCandle;
         }
@@ -385,7 +421,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
       lastValueVisible: true,
       priceLineVisible: false,
       priceScaleId: 'right',
-      visible: interval !== '1h',
+      visible: currentInterval !== '1h' && currentInterval !== '1d' && currentInterval !== '4h',
     });
     ema25_1HSeriesRef.current = ema25_1HSeries;
 
@@ -397,7 +433,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
       lastValueVisible: true,
       priceLineVisible: false,
       priceScaleId: 'right',
-      visible: interval !== '1h',
+      visible: currentInterval !== '1h' && currentInterval !== '1d' && currentInterval !== '4h',
     });
     ema200_1HSeriesRef.current = ema200_1HSeries;
 
@@ -413,9 +449,12 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
 
     const loadInitialData = async () => {
       try {
-        let initialCandles = 8760; // 1h 1y
-        if (interval === '15m') initialCandles = 8640; // ~3 months
-        if (interval === '5m') initialCandles = 12000; // Need >9600 candles for EMA 200 (4H)
+        let initialCandles = 4320; // 1h: 6 months
+        if (currentInterval === '1d') initialCandles = 1460; // 4 years
+        else if (currentInterval === '4h') initialCandles = 2190; // 1 year
+        else if (currentInterval === '30m') initialCandles = 5760; // 4 months
+        else if (currentInterval === '15m') initialCandles = 5760; // 2 months
+        else if (currentInterval === '5m') initialCandles = 8640; // 1 month
         
         const data = await fetchHistoricalKlines(initialCandles, Date.now(), (progress) => {
           setLoadingProgress(progress);
@@ -433,7 +472,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
           
           if (ema25SeriesRef.current) ema25SeriesRef.current.setData(getEmaArray(data, 25));
           if (ema200SeriesRef.current) ema200SeriesRef.current.setData(getEmaArray(data, 200));
-          if (interval !== '1h') {
+          if (currentInterval !== '1h' && currentInterval !== '1d' && currentInterval !== '4h') {
              if (ema25_1HSeriesRef.current) ema25_1HSeriesRef.current.setData(getEmaArray(data, 25 * getMultiplier(60)));
              if (ema200_1HSeriesRef.current) ema200_1HSeriesRef.current.setData(getEmaArray(data, 200 * getMultiplier(60)));
           }
@@ -449,12 +488,76 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
       }
     };
 
+    const handleExtendHistory = async () => {
+      if (!oldestTimeRef.current || isExtending) return;
+      setIsExtending(true);
+      
+      let minutesPerCandle = 60;
+      if (currentInterval === '1d') minutesPerCandle = 1440;
+      else if (currentInterval === '4h') minutesPerCandle = 240;
+      else if (currentInterval === '30m') minutesPerCandle = 30;
+      else if (currentInterval === '15m') minutesPerCandle = 15;
+      else if (currentInterval === '5m') minutesPerCandle = 5;
+      
+      const candlesToFetch = Math.ceil((extendYears * 365 * 24 * 60) / minutesPerCandle);
+      
+      try {
+        const newData = await fetchHistoricalKlines(candlesToFetch, oldestTimeRef.current - 1000, (progress) => {
+          setLoadingProgress(progress);
+        });
+        
+        if (newData.length > 0) {
+          // Merge avoiding duplicates at the boundary
+          const existingData = candleDataRef.current;
+          const mergedData = [...newData, ...existingData].sort((a, b) => a.time - b.time);
+          
+          const uniqueData = [];
+          const seen = new Set();
+          mergedData.forEach(d => {
+            if (!seen.has(d.time)) {
+              seen.add(d.time);
+              uniqueData.push(d);
+            }
+          });
+          
+          const data = uniqueData;
+          
+          const rsiArrayBase = getRsiArray(data, 14);
+          const rsiArrayHTF = getHigherTimeframeRsiArray(data, 14, 4);
+          
+          const { bgData } = applySignalsAndBackground(data, rsiArrayBase, rsiArrayHTF);
+          if (bgSeriesRef.current) bgSeriesRef.current.setData(bgData);
+          if (seriesRef.current) {
+            seriesRef.current.setData(data);
+          }
+          
+          if (ema25SeriesRef.current) ema25SeriesRef.current.setData(getEmaArray(data, 25));
+          if (ema200SeriesRef.current) ema200SeriesRef.current.setData(getEmaArray(data, 200));
+          if (currentInterval !== '1h' && currentInterval !== '1d' && currentInterval !== '4h') {
+             if (ema25_1HSeriesRef.current) ema25_1HSeriesRef.current.setData(getEmaArray(data, 25 * getMultiplier(60)));
+             if (ema200_1HSeriesRef.current) ema200_1HSeriesRef.current.setData(getEmaArray(data, 200 * getMultiplier(60)));
+          }
+          if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.setData(getEmaArray(data, 200 * getMultiplier(240)));
+          
+          candleDataRef.current = data;
+          oldestTimeRef.current = data[0].time * 1000;
+        }
+      } catch (err) {
+        console.error('Extension error:', err);
+      } finally {
+        setIsExtending(false);
+      }
+    };
+
+    // Attach to ref to be used in UI outside useEffect
+    chartInstanceRef.current.extendHistory = handleExtendHistory;
+
     loadInitialData();
 
     // Fetch latest candle every 2 seconds for real-time updates
     const fetchLiveCandle = async () => {
       try {
-        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=1`);
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${currentInterval}&limit=1`);
         if (!res.ok) return;
         const data = await res.json();
         const d = data[0];
@@ -500,7 +603,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
         const ema200Arr = getEmaArray(sliceData, 200);
         if (ema200Arr.length > 0) ema200SeriesRef.current.update(ema200Arr[ema200Arr.length - 1]);
 
-        if (interval !== '1h') {
+        if (currentInterval !== '1h' && currentInterval !== '1d' && currentInterval !== '4h') {
            const ema25_1HArr = getEmaArray(sliceData, 25 * getMultiplier(60));
            if (ema25_1HArr.length > 0) ema25_1HSeriesRef.current.update(ema25_1HArr[ema25_1HArr.length - 1]);
            
@@ -516,6 +619,50 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     };
 
     const intervalId = setInterval(fetchLiveCandle, 500);
+
+    chart.subscribeClick((param) => {
+        if (!param.point) return;
+        
+        if (measureStepRef.current === 1) {
+            // Start measuring
+            const logical = param.logical ?? chartInstanceRef.current.timeScale().coordinateToLogical(param.point.x);
+            const price = seriesRef.current.coordinateToPrice(param.point.y);
+            
+            if (price !== null && logical !== null) {
+               measureStartRef.current = { x: param.point.x, y: param.point.y, logical, price };
+               measureCurrentRef.current = { x: param.point.x, y: param.point.y, logical, price };
+               measureStepRef.current = 2; // Follow mouse
+            }
+        } else if (measureStepRef.current === 2) {
+            // Lock measurement
+            measureStepRef.current = 3;
+            chartInstanceRef.current.applyOptions({
+                handleScroll: true,
+                handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
+            });
+        }
+    });
+    
+    const handleContextMenu = (e) => {
+        if (measureStepRef.current > 0) {
+            e.preventDefault(); // Prevent browser context menu
+            e.stopPropagation();
+            setMeasureActive(false); // Dismiss measure tool
+        }
+    };
+
+    chartContainerRef.current.addEventListener('contextmenu', handleContextMenu, { capture: true });
+
+    chart.subscribeCrosshairMove((param) => {
+       if (measureStepRef.current === 2 && measureStartRef.current && param.point) {
+          measureCurrentRef.current = { 
+             point: param.point, 
+             time: param.time, 
+             logical: param.logical, 
+             price: seriesRef.current.coordinateToPrice(param.point.y) 
+          };
+       }
+    });
 
     let animationFrameId;
     const syncOverlay = () => {
@@ -584,6 +731,85 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
       } else {
         if (document.getElementById('tv-overlay-container')) document.getElementById('tv-overlay-container').style.display = 'none';
       }
+      
+      if (measureStepRef.current >= 2 && measureStartRef.current && measureCurrentRef.current) {
+           const start = measureStartRef.current;
+           const current = measureCurrentRef.current;
+           
+           const getX = (refPoint) => {
+               if (refPoint.logical !== undefined && refPoint.logical !== null) {
+                   const x = chartInstanceRef.current.timeScale().logicalToCoordinate(refPoint.logical);
+                   if (x !== null) return x;
+               }
+               if (refPoint.time) {
+                   const x = chartInstanceRef.current.timeScale().timeToCoordinate(refPoint.time);
+                   if (x !== null) return x;
+               }
+               return refPoint.point ? refPoint.point.x : refPoint.x;
+           };
+
+           const startX = getX(start);
+           const currentX = getX(current);
+           const startY = seriesRef.current.priceToCoordinate(start.price);
+           const currentY = seriesRef.current.priceToCoordinate(current.price);
+           
+           if (startX !== null && currentX !== null && startY !== null && currentY !== null) {
+              const left = Math.min(startX, currentX);
+              const top = Math.min(startY, currentY);
+              const width = Math.max(1, Math.abs(currentX - startX));
+              const height = Math.max(1, Math.abs(currentY - startY));
+              
+              const box = document.getElementById('tv-measure-box');
+              if (box) {
+                 box.style.display = 'block';
+                 box.style.left = left + 'px';
+                 box.style.top = top + 'px';
+                 box.style.width = width + 'px';
+                 box.style.height = height + 'px';
+                 box.style.background = current.price >= start.price ? 'rgba(74, 222, 128, 0.15)' : 'rgba(248, 113, 113, 0.15)';
+                 box.style.borderColor = current.price >= start.price ? '#4ade80' : '#f87171';
+                 
+                 const text = document.getElementById('tv-measure-text');
+                 if (text) {
+                    const priceDiff = current.price - start.price;
+                    const pctDiff = (priceDiff / start.price) * 100;
+                    
+                    let bars = 0;
+                    if (current.logical !== undefined && start.logical !== undefined) {
+                        bars = Math.abs(Math.round(current.logical - start.logical));
+                    }
+                    
+                    let currentMinutes = 60;
+                    const iv = currentInterval;
+                    if (iv === '1d') currentMinutes = 1440;
+                    else if (iv === '4h') currentMinutes = 240;
+                    else if (iv === '30m') currentMinutes = 30;
+                    else if (iv === '15m') currentMinutes = 15;
+                    else if (iv === '5m') currentMinutes = 5;
+                    
+                    const timeDiffSeconds = bars * currentMinutes * 60;
+                    let timeStr = '';
+                    if (timeDiffSeconds >= 86400) timeStr = Math.floor(timeDiffSeconds / 86400) + 'd ' + Math.floor((timeDiffSeconds % 86400) / 3600) + 'h';
+                    else if (timeDiffSeconds >= 3600) timeStr = Math.floor(timeDiffSeconds / 3600) + 'h ' + Math.floor((timeDiffSeconds % 3600) / 60) + 'm';
+                    else timeStr = Math.floor(timeDiffSeconds / 60) + 'm';
+                    
+                    text.innerHTML = `
+                      <div style="color: ${priceDiff >= 0 ? '#4ade80' : '#f87171'}; font-weight: bold; font-size: 13px;">
+                        ${priceDiff >= 0 ? '+' : ''}${priceDiff.toFixed(2)} (${priceDiff >= 0 ? '+' : ''}${pctDiff.toFixed(2)}%)
+                      </div>
+                      <div style="color: #cbd5e1; display: flex; justify-content: space-between; gap: 15px; margin-top: 4px;">
+                        <span>${bars} bars</span>
+                        <span>${timeStr}</span>
+                      </div>
+                    `;
+                 }
+              }
+           }
+      } else {
+           const box = document.getElementById('tv-measure-box');
+           if (box) box.style.display = 'none';
+      }
+
       animationFrameId = requestAnimationFrame(syncOverlay);
     };
     syncOverlay();
@@ -592,9 +818,12 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     return () => {
       clearInterval(intervalId);
       cancelAnimationFrame(animationFrameId);
+      if (chartContainerRef.current) {
+          chartContainerRef.current.removeEventListener('contextmenu', handleContextMenu, { capture: true });
+      }
       chart.remove();
     };
-  }, []);
+  }, [currentInterval, symbol]);
 
   // Drag Interactions
   useEffect(() => {
@@ -717,9 +946,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     }
   };
 
-  const renderPositionZones = () => {
-    if (!position) return null;
-    const { lots, spread = 0 } = position;
+  const renderOverlays = () => {
+    const lots = position ? position.lots : 0;
+    const spread = position ? (position.spread || 0) : 0;
     
     const handleStyle = {
       position: 'absolute', left: 0, right: 0, height: '14px',
@@ -732,6 +961,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
     const lossBorder = '#f87171';
 
     return (
+      <>
       <div id="tv-overlay-container" style={{ display: 'none', width: '100%', height: '100%', position: 'absolute', top:0, left:0 }}>
           <div id="tv-tp-guide" style={{ position: 'absolute', height: '1px', left: 0, right: 0, borderTop: `1px dashed ${profitBorder}`, opacity: dragging === 'tp' || dragging === 'center' ? 0.7 : 0 }} />
           <div id="tv-sl-guide" style={{ position: 'absolute', height: '1px', left: 0, right: 0, borderTop: `1px dashed ${lossBorder}`, opacity: dragging === 'sl' || dragging === 'center' ? 0.7 : 0 }} />
@@ -774,6 +1004,12 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
         <div id="tv-tp-handle" className="tv-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'tp'; setDragging('tp'); }} />
         <div id="tv-sl-handle" className="tv-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'sl'; setDragging('sl'); }} />
       </div>
+
+      <div id="tv-measure-box" style={{ position: 'absolute', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid #38bdf8', pointerEvents: 'none', display: 'none', zIndex: 100 }}>
+         <div id="tv-measure-text" style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translate(-50%, 5px)', background: '#0f172a', padding: '6px 10px', borderRadius: '6px', border: '1px solid #334155', color: '#f8fafc', fontSize: '11px', whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }}>
+         </div>
+      </div>
+      </>
     );
   };
 
@@ -790,13 +1026,86 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
         zIndex: 50, background: '#0f172a'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.5rem' }}>Bitcoin / USDT</h2>
-          <span className="timeframe-badge" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
-            {interval === '1h' ? '1H (5 Years)' : interval === '15m' ? '15m (3 Years)' : '5m (1 Year)'}
-          </span>
+          <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.5rem' }}>{title}</h2>
+          <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px', marginRight: '10px' }}>
+            {['1d', '4h', '1h', '30m', '15m', '5m'].map(tf => (
+              <button
+                key={tf}
+                onClick={() => { setIsLoading(true); setCurrentInterval(tf); }}
+                style={{
+                  background: currentInterval === tf ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                  color: currentInterval === tf ? '#38bdf8' : '#94a3b8',
+                  border: 'none',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: currentInterval === tf ? 'bold' : 'normal',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {tf.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          
+          <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px', marginRight: '10px', alignItems: 'center' }}>
+            <span style={{color: '#94a3b8', fontSize: '0.8rem', marginLeft: '4px'}}>History:</span>
+            
+            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <button onClick={() => setExtendYears(Math.max(1, extendYears - 1))} style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color='#f8fafc'} onMouseOut={e => e.target.style.color='#94a3b8'}>-</button>
+              <span style={{ color: '#f8fafc', fontSize: '0.8rem', minWidth: '24px', textAlign: 'center', fontWeight: 'bold' }}>{extendYears}Y</span>
+              <button onClick={() => setExtendYears(Math.min(10, extendYears + 1))} style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color='#f8fafc'} onMouseOut={e => e.target.style.color='#94a3b8'}>+</button>
+            </div>
+
+            <button
+              onClick={() => {
+                if (chartInstanceRef.current && chartInstanceRef.current.extendHistory) {
+                  chartInstanceRef.current.extendHistory();
+                }
+              }}
+              disabled={isExtending}
+              style={{
+                background: isExtending ? 'transparent' : 'rgba(168, 85, 247, 0.2)',
+                color: isExtending ? '#94a3b8' : '#c084fc',
+                border: isExtending ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(168, 85, 247, 0.3)',
+                padding: '4px 12px',
+                borderRadius: '6px',
+                cursor: isExtending ? 'default' : 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                transition: 'all 0.2s'
+              }}
+            >
+              {isExtending ? '⏳ Loading...' : '⬇️ Load'}
+            </button>
+          </div>
         </div>
         
         <div className="modal-header-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          
+          {/* Measure Tool Button */}
+          <button
+            onClick={() => setMeasureActive(!measureActive)}
+            style={{
+              background: measureActive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
+              color: measureActive ? '#38bdf8' : '#94a3b8',
+              border: measureActive ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              transition: 'all 0.2s',
+              marginRight: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Measure Tool (Click to start, click to stop)"
+          >
+            📏 Measure
+          </button>
+
           {/* Position Tools */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '20px', marginRight: '10px' }}>
             <span style={{color: '#94a3b8', fontSize: '0.8rem', fontWeight: 500}}>Lots:</span>
@@ -822,7 +1131,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
               { label: 'EMA 25', state: showEma25, setter: setShowEma25, color: '#22c55e' },
               { label: 'EMA 200', state: showEma200, setter: setShowEma200, color: '#3b82f6' }
             ];
-            if (interval !== '1h') {
+            if (currentInterval !== '1h' && currentInterval !== '1d' && currentInterval !== '4h') {
               btns.push({ label: 'EMA 25 (1H)', state: showEma25_1H, setter: setShowEma25_1H, color: '#facc15' });
               btns.push({ label: 'EMA 200 (1H)', state: showEma200_1H, setter: setShowEma200_1H, color: '#fb923c' });
             }
@@ -905,11 +1214,9 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5 }) => {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
           <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />
           
-          {position && (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 10, overflow: 'hidden' }}>
-               {renderPositionZones()}
-            </div>
-          )}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 10, overflow: 'hidden' }}>
+             {renderOverlays()}
+          </div>
         </div>
       </div>
     </div>
