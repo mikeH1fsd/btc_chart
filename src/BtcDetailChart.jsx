@@ -40,11 +40,13 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
   }, [position]);
 
   const [measureActive, setMeasureActive] = useState(false);
+  const measureActiveRef = useRef(false);
   const measureStepRef = useRef(0); // 0: inactive, 1: ready, 2: measuring, 3: locked
   const measureStartRef = useRef(null);
   const measureCurrentRef = useRef(null);
   
   useEffect(() => {
+     measureActiveRef.current = measureActive;
      if (measureActive) {
         measureStepRef.current = 1;
         measureStartRef.current = null;
@@ -620,52 +622,94 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
 
     const intervalId = setInterval(fetchLiveCandle, 500);
 
-    chart.subscribeClick((param) => {
-        if (!param.point) return;
-        
-        if (measureStepRef.current === 1) {
-            // Start measuring
-            const logical = param.logical ?? chartInstanceRef.current.timeScale().coordinateToLogical(param.point.x);
-            const price = seriesRef.current.coordinateToPrice(param.point.y);
-            
-            if (price !== null && logical !== null) {
-               measureStartRef.current = { x: param.point.x, y: param.point.y, logical, price };
-               measureCurrentRef.current = { x: param.point.x, y: param.point.y, logical, price };
-               measureStepRef.current = 2; // Follow mouse
-            }
-        } else if (measureStepRef.current === 2) {
-            // Lock measurement
-            measureStepRef.current = 3;
-            chartInstanceRef.current.applyOptions({
-                handleScroll: true,
-                handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
-            });
-        } else if (measureStepRef.current === 3) {
-            // Dismiss on 3rd tap for mobile users
-            setMeasureActive(false);
-        }
-    });
-    
-    const handleContextMenu = (e) => {
-        if (measureStepRef.current > 0) {
-            e.preventDefault(); // Prevent browser context menu
+    const startPosRef = { current: null };
+
+    const handlePointerDown = (e) => {
+        if (!measureActiveRef.current || !chartContainerRef.current || !chartInstanceRef.current) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        startPosRef.current = { x: e.clientX, y: e.clientY };
+
+        if (measureStepRef.current === 1 || measureStepRef.current === 2) {
             e.stopPropagation();
-            setMeasureActive(false); // Dismiss measure tool
+            const rect = chartContainerRef.current.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const logical = chartInstanceRef.current.timeScale().coordinateToLogical(x);
+            const price = seriesRef.current.coordinateToPrice(y);
+            if (logical !== null && price !== null) {
+                if (measureStepRef.current === 1) {
+                    measureStartRef.current = { x, y, logical, price };
+                }
+                measureCurrentRef.current = { x, y, logical, price };
+            }
         }
     };
 
-    chartContainerRef.current.addEventListener('contextmenu', handleContextMenu, { capture: true });
+    const handlePointerMove = (e) => {
+        if (!measureActiveRef.current || !chartContainerRef.current || !chartInstanceRef.current) return;
+        if (measureStepRef.current === 1 || measureStepRef.current === 2) {
+            if (startPosRef.current) e.stopPropagation();
+            
+            if (measureStepRef.current === 2 || startPosRef.current) {
+                const rect = chartContainerRef.current.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const logical = chartInstanceRef.current.timeScale().coordinateToLogical(x);
+                const price = seriesRef.current.coordinateToPrice(y);
+                if (logical !== null && price !== null) {
+                    measureCurrentRef.current = { x, y, logical, price };
+                }
+            }
+        }
+    };
 
-    chart.subscribeCrosshairMove((param) => {
-       if (measureStepRef.current === 2 && measureStartRef.current && param.point) {
-          measureCurrentRef.current = { 
-             point: param.point, 
-             time: param.time, 
-             logical: param.logical, 
-             price: seriesRef.current.coordinateToPrice(param.point.y) 
-          };
-       }
-    });
+    const handlePointerUp = (e) => {
+        if (!measureActiveRef.current || !chartContainerRef.current || !chartInstanceRef.current) {
+            startPosRef.current = null;
+            return;
+        }
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        const dx = startPosRef.current ? Math.abs(e.clientX - startPosRef.current.x) : 0;
+        const dy = startPosRef.current ? Math.abs(e.clientY - startPosRef.current.y) : 0;
+        const isTap = dx < 10 && dy < 10;
+        startPosRef.current = null;
+
+        if (measureStepRef.current === 1 || measureStepRef.current === 2) {
+            e.stopPropagation();
+            if (measureStepRef.current === 1) {
+                measureStepRef.current = 2;
+            } else if (measureStepRef.current === 2) {
+                if (isTap) {
+                    measureStepRef.current = 3;
+                    chartInstanceRef.current.applyOptions({
+                        handleScroll: true,
+                        handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
+                    });
+                }
+            }
+        } else if (measureStepRef.current === 3) {
+            if (isTap) {
+                e.stopPropagation();
+                setMeasureActive(false);
+            }
+        }
+    };
+
+    const handleContextMenu = (e) => {
+        if (measureStepRef.current > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            setMeasureActive(false);
+        }
+    };
+
+    chartContainerRef.current.addEventListener('pointerdown', handlePointerDown, { capture: true });
+    chartContainerRef.current.addEventListener('pointermove', handlePointerMove, { capture: true });
+    chartContainerRef.current.addEventListener('pointerup', handlePointerUp, { capture: true });
+    chartContainerRef.current.addEventListener('pointercancel', handlePointerUp, { capture: true });
+    chartContainerRef.current.addEventListener('contextmenu', handleContextMenu, { capture: true });
 
     let animationFrameId;
     const syncOverlay = () => {
@@ -822,6 +866,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       clearInterval(intervalId);
       cancelAnimationFrame(animationFrameId);
       if (chartContainerRef.current) {
+          chartContainerRef.current.removeEventListener('pointerdown', handlePointerDown, { capture: true });
+          chartContainerRef.current.removeEventListener('pointermove', handlePointerMove, { capture: true });
+          chartContainerRef.current.removeEventListener('pointerup', handlePointerUp, { capture: true });
+          chartContainerRef.current.removeEventListener('pointercancel', handlePointerUp, { capture: true });
           chartContainerRef.current.removeEventListener('contextmenu', handleContextMenu, { capture: true });
       }
       chart.remove();
