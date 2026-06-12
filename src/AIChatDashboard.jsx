@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 const AIChatDashboard = ({ onClose }) => {
+  const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+  const [isApiKeySet, setIsApiKeySet] = useState(!!localStorage.getItem('gemini_api_key'));
+  const [apiKeyInput, setApiKeyInput] = useState('');
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Xin chào! Mình là trợ lý AI (không giới hạn, không cần API Key). Bạn muốn hỏi thông tin gì về thị trường hoặc phân tích cổ phiếu nào?' }
+    { role: 'assistant', content: 'Xin chào! Mình là trợ lý AI. Bạn muốn hỏi thông tin gì về thị trường hoặc phân tích cổ phiếu nào?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -13,11 +16,28 @@ const AIChatDashboard = ({ onClose }) => {
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
+    if (isApiKeySet) {
+      scrollToBottom();
+    }
+  }, [messages, isLoading, isApiKeySet]);
+
+  const handleSaveApiKey = () => {
+    if (apiKeyInput.trim().length > 10) {
+      localStorage.setItem('gemini_api_key', apiKeyInput.trim());
+      setApiKey(apiKeyInput.trim());
+      setIsApiKeySet(true);
+    }
+  };
+
+  const handleClearApiKey = () => {
+    localStorage.removeItem('gemini_api_key');
+    setApiKey('');
+    setIsApiKeySet(false);
+    setApiKeyInput('');
+  };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !apiKey) return;
 
     const userMessage = input.trim();
     setInput('');
@@ -25,21 +45,48 @@ const AIChatDashboard = ({ onClose }) => {
     setIsLoading(true);
 
     try {
-      // Build context
-      let context = messages.slice(-4).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
-      let fullPrompt = `Context:\n${context}\n\nUser: ${userMessage}\n\nHãy phân tích và trả lời câu hỏi trên:`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-      // Open ChatGPT in a new tab
-      window.open(`https://chatgpt.com/?q=${encodeURIComponent(fullPrompt)}`, '_blank');
+      const conversationHistory = messages.filter(m => m.role !== 'assistant' || !m.content.includes('Xin chào! Mình là trợ lý AI')).map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }]
+      }));
       
-      setTimeout(() => {
-        setMessages(prev => [...prev, { role: 'assistant', content: '✅ Mình đã mở một tab mới và đẩy câu hỏi của bạn sang **ChatGPT chính chủ**.\n\n⚠️ **Lưu ý nhỏ:** Vì lý do bảo mật của Google Chrome, web không thể tự động bấm gửi. Bạn vui lòng **chuyển sang tab ChatGPT vừa mở và nhấn phím Enter** để nhận câu trả lời cực chuẩn nhé!' }]);
-        setIsLoading(false);
-      }, 1000);
+      conversationHistory.push({
+        role: 'user',
+        parts: [{ text: userMessage }]
+      });
+
+      const payload = {
+        contents: conversationHistory,
+        systemInstruction: {
+          parts: [{ text: "Bạn là một trợ lý ảo chuyên phân tích thị trường chứng khoán, tiền điện tử, ngoại hối và các xu hướng tài chính. Hãy trả lời ngắn gọn, súc tích và chính xác." }]
+        },
+        tools: [
+          { googleSearch: {} }
+        ]
+      };
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || 'Lỗi API');
+      }
+
+      const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Không nhận được câu trả lời hợp lệ từ AI.";
+
+      setMessages(prev => [...prev, { role: 'assistant', content: botReply }]);
+      setIsLoading(false);
 
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, hệ thống bị lỗi khi mở tab mới!' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, hệ thống bị lỗi: ' + error.message }]);
       setIsLoading(false);
     }
   };
@@ -51,6 +98,70 @@ const AIChatDashboard = ({ onClose }) => {
     }
   };
 
+  if (!isApiKeySet) {
+    return (
+      <div style={{ padding: '20px', maxWidth: '600px', margin: '40px auto', height: '100%', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease-out' }}>
+        <div className="glass-card" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'center' }}>
+          <h2 style={{ color: '#fff', fontSize: '1.8rem', margin: 0, background: 'linear-gradient(to right, #10b981, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Thiết lập Gemini API Key
+          </h2>
+          <p style={{ color: '#94a3b8', margin: 0 }}>
+            Vui lòng nhập API Key của Google Gemini để bắt đầu trò chuyện. Khóa này chỉ lưu trữ cục bộ trên trình duyệt của bạn.
+          </p>
+          <input
+            type="password"
+            value={apiKeyInput}
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            placeholder="Nhập API Key vào đây..."
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              padding: '12px 15px',
+              borderRadius: '8px',
+              color: '#fff',
+              fontSize: '1rem',
+              outline: 'none'
+            }}
+          />
+          <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '10px' }}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '10px 20px',
+                background: 'rgba(255,255,255,0.1)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              Hủy
+            </button>
+            <button
+              onClick={handleSaveApiKey}
+              disabled={!apiKeyInput.trim()}
+              style={{
+                padding: '10px 20px',
+                background: apiKeyInput.trim() ? '#10b981' : 'rgba(255,255,255,0.1)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: apiKeyInput.trim() ? 'pointer' : 'not-allowed',
+                fontWeight: 600
+              }}
+            >
+              Lưu & Bắt đầu
+            </button>
+          </div>
+          <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0 }}>
+            Chưa có API Key? <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: '#38bdf8' }}>Lấy mã miễn phí tại đây</a>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease-out' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0 }}>
@@ -58,7 +169,10 @@ const AIChatDashboard = ({ onClose }) => {
           <h2 style={{ color: '#fff', fontSize: '2rem', fontWeight: 800, margin: '0 0 0.5rem 0', background: 'linear-gradient(to right, #10b981, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             🤖 Trợ Lý AI
           </h2>
-          <p style={{ color: '#94a3b8', margin: 0 }}>Hỏi đáp trực tiếp - Không giới hạn - Miễn phí 100%</p>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+             <p style={{ color: '#94a3b8', margin: 0 }}>Sử dụng Gemini 2.5 Flash + Web Search</p>
+             <button onClick={handleClearApiKey} style={{ background: 'transparent', border: '1px solid #64748b', color: '#94a3b8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer' }}>Đổi API Key</button>
+          </div>
         </div>
         <button 
           onClick={onClose}
