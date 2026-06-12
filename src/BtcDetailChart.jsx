@@ -801,23 +801,6 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         if (document.getElementById('tv-overlay-container')) document.getElementById('tv-overlay-container').style.display = 'none';
       }
       
-      if (measureStepRef.current >= 2 && measureStartRef.current && measureCurrentRef.current) {
-           const start = measureStartRef.current;
-           const current = measureCurrentRef.current;
-           
-           const getX = (refPoint) => {
-               if (refPoint.logical !== undefined && refPoint.logical !== null) {
-                   const x = chartInstanceRef.current.timeScale().logicalToCoordinate(refPoint.logical);
-                   if (x !== null) return x;
-               }
-               if (refPoint.time) {
-                   const x = chartInstanceRef.current.timeScale().timeToCoordinate(refPoint.time);
-                   if (x !== null) return x;
-               }
-               return refPoint.point ? refPoint.point.x : refPoint.x;
-           };
-
-           const startX = getX(start);
       if (measureActiveRef.current && measureStartRef.current && measureCurrentRef.current && measureStepRef.current > 1) {
           const startX = chartInstanceRef.current.timeScale().logicalToCoordinate(measureStartRef.current.logical);
           const startY = seriesRef.current.priceToCoordinate(measureStartRef.current.price);
@@ -889,7 +872,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
                    </div>
                  `;
               }
-           }
+          }
       } else {
            const svg = document.getElementById('tv-measure-svg');
            if (svg) svg.style.display = 'none';
