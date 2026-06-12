@@ -780,18 +780,24 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
               const width = Math.max(1, Math.abs(currentX - startX));
               const height = Math.max(1, Math.abs(currentY - startY));
               
-              const box = document.getElementById('tv-measure-box');
-              if (box) {
-                 box.style.display = 'block';
-                 box.style.left = left + 'px';
-                 box.style.top = top + 'px';
-                 box.style.width = width + 'px';
-                 box.style.height = height + 'px';
-                 box.style.background = current.price >= start.price ? 'rgba(74, 222, 128, 0.15)' : 'rgba(248, 113, 113, 0.15)';
-                 box.style.borderColor = current.price >= start.price ? '#4ade80' : '#f87171';
+              const svg = document.getElementById('tv-measure-svg');
+              const rectEl = document.getElementById('tv-measure-rect');
+              if (svg && rectEl) {
+                 svg.style.display = 'block';
+                 rectEl.setAttribute('x', left);
+                 rectEl.setAttribute('y', top);
+                 rectEl.setAttribute('width', width);
+                 rectEl.setAttribute('height', height);
+                 rectEl.setAttribute('fill', current.price >= start.price ? 'rgba(74, 222, 128, 0.15)' : 'rgba(248, 113, 113, 0.15)');
+                 rectEl.setAttribute('stroke', current.price >= start.price ? '#4ade80' : '#f87171');
                  
                  const text = document.getElementById('tv-measure-text');
                  if (text) {
+                    text.style.display = 'flex';
+                    let textX = left + width/2;
+                    let textY = current.price >= start.price ? top - 55 : top + height + 10;
+                    text.style.transform = `translate3d(calc(${textX}px - 50%), ${textY}px, 0)`;
+                    
                     const priceDiff = current.price - start.price;
                     const pctDiff = (priceDiff / start.price) * 100;
                     
@@ -837,8 +843,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
               }
            }
       } else {
-           const box = document.getElementById('tv-measure-box');
-           if (box) box.style.display = 'none';
+           const svg = document.getElementById('tv-measure-svg');
+           if (svg) svg.style.display = 'none';
+           const text = document.getElementById('tv-measure-text');
+           if (text) text.style.display = 'none';
       }
 
       animationFrameId = requestAnimationFrame(syncOverlay);
@@ -1036,9 +1044,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         <div id="tv-sl-handle" className="tv-handle" style={handleStyle} onPointerDown={(e) => { e.stopPropagation(); draggingRef.current = 'sl'; setDragging('sl'); }} />
       </div>
 
-      <div id="tv-measure-box" style={{ position: 'absolute', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid #38bdf8', pointerEvents: 'none', display: 'none', zIndex: 100 }}>
-         <div id="tv-measure-text" style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translate(-50%, 5px)', background: '#0f172a', padding: '6px 10px', borderRadius: '6px', border: '1px solid #334155', color: '#f8fafc', fontSize: '11px', whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }}>
-         </div>
+      <svg id="tv-measure-svg" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', display: 'none', zIndex: 100 }}>
+         <rect id="tv-measure-rect" x="0" y="0" width="0" height="0" fill="rgba(56, 189, 248, 0.15)" stroke="#38bdf8" strokeWidth="1" />
+      </svg>
+      <div id="tv-measure-text" style={{ position: 'absolute', top: 0, left: 0, transform: 'translate3d(0,0,0)', background: 'rgba(15, 23, 42, 0.95)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', color: '#f8fafc', fontSize: '12px', whiteSpace: 'nowrap', display: 'none', flexDirection: 'column', gap: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 101, pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
       </div>
       </>
     );
