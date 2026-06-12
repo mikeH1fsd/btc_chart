@@ -44,6 +44,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
   const measureStepRef = useRef(0); // 0: inactive, 1: ready, 2: measuring, 3: locked
   const measureStartRef = useRef(null);
   const measureCurrentRef = useRef(null);
+  const chartRectRef = useRef(null);
   
   useEffect(() => {
      measureActiveRef.current = measureActive;
@@ -622,15 +623,14 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
 
     const intervalId = setInterval(fetchLiveCandle, 500);
 
-    const intervalId = setInterval(fetchLiveCandle, 500);
-
     // Native pointermove to polyfill touch dragging on mobile
     const handlePointerMove = (e) => {
         if (!measureActiveRef.current || measureStepRef.current !== 2) return;
         
         // Only polyfill for touch events, since subscribeCrosshairMove handles mouse perfectly
         if (e.pointerType === 'touch' || (e.pointerType === 'mouse' && e.buttons > 0)) {
-            const rect = chartContainerRef.current.getBoundingClientRect();
+            if (!chartRectRef.current) chartRectRef.current = chartContainerRef.current.getBoundingClientRect();
+            const rect = chartRectRef.current;
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             const logical = chartInstanceRef.current.timeScale().coordinateToLogical(x);
@@ -656,6 +656,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
 
         if (measureStepRef.current === 1) {
             // Tap 1: Start measuring
+            chartRectRef.current = chartContainerRef.current.getBoundingClientRect();
             measureStartRef.current = { x: param.point.x, y: param.point.y, logical, price };
             measureCurrentRef.current = { x: param.point.x, y: param.point.y, logical, price };
             measureStepRef.current = 2;
@@ -813,15 +814,25 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
                     else if (timeDiffSeconds >= 3600) timeStr = Math.floor(timeDiffSeconds / 3600) + 'h ' + Math.floor((timeDiffSeconds % 3600) / 60) + 'm';
                     else timeStr = Math.floor(timeDiffSeconds / 60) + 'm';
                     
-                    text.innerHTML = `
-                      <div style="color: ${priceDiff >= 0 ? '#4ade80' : '#f87171'}; font-weight: bold; font-size: 13px;">
-                        ${priceDiff >= 0 ? '+' : ''}${priceDiff.toFixed(2)} (${priceDiff >= 0 ? '+' : ''}${pctDiff.toFixed(2)}%)
-                      </div>
-                      <div style="color: #cbd5e1; display: flex; justify-content: space-between; gap: 15px; margin-top: 4px;">
-                        <span>${bars} bars</span>
-                        <span>${timeStr}</span>
-                      </div>
-                    `;
+                    if (!document.getElementById('tv-measure-val-1')) {
+                        text.innerHTML = `
+                          <div id="tv-measure-val-1" style="font-weight: bold; font-size: 13px;"></div>
+                          <div style="color: #cbd5e1; display: flex; justify-content: space-between; gap: 15px; margin-top: 4px;">
+                            <span id="tv-measure-val-2"></span>
+                            <span id="tv-measure-val-3"></span>
+                          </div>
+                        `;
+                    }
+                    
+                    const val1 = document.getElementById('tv-measure-val-1');
+                    if (val1) {
+                        val1.style.color = priceDiff >= 0 ? '#4ade80' : '#f87171';
+                        val1.textContent = `${priceDiff >= 0 ? '+' : ''}${priceDiff.toFixed(2)} (${priceDiff >= 0 ? '+' : ''}${pctDiff.toFixed(2)}%)`;
+                    }
+                    const val2 = document.getElementById('tv-measure-val-2');
+                    if (val2) val2.textContent = `${bars} bars`;
+                    const val3 = document.getElementById('tv-measure-val-3');
+                    if (val3) val3.textContent = timeStr;
                  }
               }
            }
