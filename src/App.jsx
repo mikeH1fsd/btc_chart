@@ -102,7 +102,15 @@ function App() {
   }
 
   if (showRadar) {
-    return <SmartMoneyRadar onClose={() => setShowRadar(false)} />;
+    return (
+      <SmartMoneyRadar 
+        onClose={() => setShowRadar(false)} 
+        onViewChart={(config) => {
+          setShowRadar(false);
+          setBtcDetailConfig(config);
+        }} 
+      />
+    );
   }
 
   return (

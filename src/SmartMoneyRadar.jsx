@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const COOLDOWN_MINUTES = 30;
 const TOP_COINS_COUNT = 150;
 
-const SmartMoneyRadar = ({ onClose }) => {
+const SmartMoneyRadar = ({ onClose, onViewChart }) => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [initStatus, setInitStatus] = useState('Đang quét thanh khoản thị trường...');
   const [spikes, setSpikes] = useState([]);
@@ -256,28 +256,52 @@ const SmartMoneyRadar = ({ onClose }) => {
                       </div>
                     </div>
                     
-                    <button
-                      onClick={() => {
-                        const prompt = `Tại sao đồng tiền ảo ${spike.symbol.replace('USDT', '')} lại có dòng tiền đột biến x${spike.volRatio.toFixed(1)} lần và tăng vọt +${spike.priceChange.toFixed(2)}% trên thị trường crypto trong 15 phút vừa qua? Có tin tức gì mớI?`;
-                        window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank');
-                      }}
-                      style={{
-                        padding: '10px 15px',
-                        background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 10px rgba(139, 92, 246, 0.3)',
-                        transition: 'transform 0.2s',
-                        whiteSpace: 'nowrap'
-                      }}
-                      onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                      onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                    >
-                      🤖 Hỏi AI
-                    </button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={() => {
+                          if (onViewChart) {
+                            onViewChart({ interval: '15m', years: 1, symbol: spike.symbol, title: `${spike.symbol.replace('USDT', '')} / USDT` });
+                          }
+                        }}
+                        style={{
+                          padding: '10px 15px',
+                          background: 'rgba(255,255,255,0.1)',
+                          color: '#e2e8f0',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '8px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                        onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                      >
+                        📈 Xem Chart
+                      </button>
+                      <button
+                        onClick={() => {
+                          const prompt = `Tại sao đồng tiền ảo ${spike.symbol.replace('USDT', '')} lại có dòng tiền đột biến x${spike.volRatio.toFixed(1)} lần và tăng vọt +${spike.priceChange.toFixed(2)}% trên thị trường crypto trong 15 phút vừa qua? Có tin tức gì mớI?`;
+                          window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank');
+                        }}
+                        style={{
+                          padding: '10px 15px',
+                          background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 10px rgba(139, 92, 246, 0.3)',
+                          transition: 'transform 0.2s',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                        onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                      >
+                        🤖 Hỏi AI
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
