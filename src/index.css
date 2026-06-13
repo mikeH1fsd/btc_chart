@@ -248,6 +248,22 @@ body {
   .mobile-hide {
     display: none !important;
   }
+  .radar-header-mobile {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .radar-controls-mobile {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+  .radar-spike-card-mobile {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .radar-spike-actions-mobile {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
   .chart-header {
     flex-direction: column;
     align-items: flex-start !important;

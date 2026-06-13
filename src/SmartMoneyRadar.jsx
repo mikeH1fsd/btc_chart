@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 const COOLDOWN_MINUTES = 30;
-const TOP_COINS_COUNT = 150;
+const TOP_COINS_COUNT = 200;
 
 const SmartMoneyRadar = ({ onClose, onViewChart }) => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -157,16 +157,16 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
   };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0, flexWrap: 'wrap', gap: '15px' }}>
+    <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease-out' }} className="app-container">
+      <div className="radar-header-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0, flexWrap: 'wrap', gap: '15px' }}>
         <div>
           <h2 style={{ color: '#fff', fontSize: '2rem', fontWeight: 800, margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="radar-icon-spin" style={{ fontSize: '1.8rem' }}>🎯</span> Radar Dòng Tiền
           </h2>
-          <p style={{ color: '#94a3b8', margin: 0 }}>Quét 150+ Coin có thanh khoản cao nhất Binance theo thời gian thực (Nến 15M)</p>
+          <p style={{ color: '#94a3b8', margin: 0 }}>Quét {TOP_COINS_COUNT}+ Coin có thanh khoản cao nhất Binance theo thời gian thực (Nến 15M)</p>
         </div>
         
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 20px', borderRadius: '12px' }}>
+        <div className="radar-controls-mobile" style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 20px', borderRadius: '12px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             <label style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Bơm Volume (x lần): {volMultiplier}x</label>
             <input type="range" min="1.5" max="10" step="0.5" value={volMultiplier} onChange={e => setVolMultiplier(parseFloat(e.target.value))} />
@@ -193,10 +193,10 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', overflow: 'hidden' }}>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '12px', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981', animation: 'pulse-green 1.5s infinite' }}></div>
-              <span style={{ color: '#10b981', fontWeight: 600 }}>Hệ thống đang quét 150 cặp USDT trực tiếp...</span>
+              <span style={{ color: '#10b981', fontWeight: 600 }}>Hệ thống đang quét {TOP_COINS_COUNT} cặp USDT trực tiếp...</span>
             </div>
             <button 
               onClick={handleSimulate}
@@ -217,7 +217,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
               spikes.map(spike => (
                 <div 
                   key={spike.id} 
-                  className={`glass-card ${spike.isNew ? 'spike-flash' : ''}`}
+                  className={`glass-card radar-spike-card-mobile ${spike.isNew ? 'spike-flash' : ''}`}
                   style={{ 
                     padding: '20px', 
                     display: 'flex', 
@@ -230,7 +230,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
                     gap: '15px'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', minWidth: '300px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', minWidth: '250px' }}>
                     <div style={{ color: '#94a3b8', fontSize: '0.9rem', width: '80px', flexShrink: 0 }}>
                       {spike.time}
                     </div>
@@ -245,9 +245,9 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
                     </div>
                   </div>
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '25px', flexWrap: 'wrap' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '4px' }}>Dòng tiền đổ vào (15P)</div>
+                  <div className="radar-spike-actions-mobile" style={{ display: 'flex', alignItems: 'center', gap: '25px', flexWrap: 'wrap' }}>
+                    <div style={{ textAlign: 'right', flex: 1 }}>
+                      <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '4px' }}>Dòng tiền (15P)</div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', justifyContent: 'flex-end' }}>
                         <span style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#10b981' }}>${formatMoney(spike.volUsd)}</span>
                         <span style={{ padding: '2px 8px', background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
