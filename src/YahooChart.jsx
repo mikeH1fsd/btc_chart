@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Line } from 'react-chartjs-2';
 
 const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval = '1wk', range = '5y' }) => {
+  const [fullData, setFullData] = useState(null);
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
   const chartRef = useRef(null);
@@ -24,6 +25,7 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
 
   useEffect(() => {
     // Clear previous data immediately when ticker changes
+    setFullData(null);
     setChartData(null);
     setError(null);
 
@@ -31,40 +33,62 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
       try {
         console.log(`Fetching ${label} data from Yahoo Finance...`);
 
-        const baseUrl = import.meta.env.DEV 
-          ? '/yahoo' 
-          : 'https://corsproxy.io/?https://query1.finance.yahoo.com';
-          
+        let timestamps, closes;
         let response;
-        try {
-          // Fetch requested range and interval
-          response = await fetch(
-            `${baseUrl}/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`
-          );
-          if (!response.ok) throw new Error("Primary fetch failed");
-        } catch (err) {
-          if (!import.meta.env.DEV) {
-            console.log("Fallback to allorigins proxy...");
-            const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`)}`;
-            response = await fetch(fallbackUrl);
-          } else {
-            throw err;
+
+        if (ticker === 'VNINDEX') {
+          // Fetch VNINDEX directly from Entrade API (DNSE) because Yahoo Finance data is broken
+          const toTime = Math.floor(Date.now() / 1000);
+          const fromTime = toTime - (10 * 365 * 24 * 60 * 60); // fetch 10 years max
+          
+          const proxyUrl = import.meta.env.DEV 
+            ? `https://corsproxy.io/?https://services.entrade.com.vn/chart-api/v2/ohlcs/index?resolution=1D&symbol=VNINDEX&from=${fromTime}&to=${toTime}`
+            : `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://services.entrade.com.vn/chart-api/v2/ohlcs/index?resolution=1D&symbol=VNINDEX&from=${fromTime}&to=${toTime}`)}`;
+            
+          response = await fetch(proxyUrl);
+          if (!response.ok) throw new Error("VNINDEX fetch failed");
+          
+          const data = await response.json();
+          if (!data || !data.t || !data.c) throw new Error("No data returned for VNINDEX");
+          
+          timestamps = data.t;
+          closes = data.c;
+        } else {
+          // Normal Yahoo Finance fetch
+          const baseUrl = import.meta.env.DEV 
+            ? '/yahoo' 
+            : 'https://corsproxy.io/?https://query1.finance.yahoo.com';
+            
+          try {
+            // Always fetch 10y for smooth slicing locally
+            response = await fetch(
+              `${baseUrl}/v8/finance/chart/${ticker}?interval=${interval}&range=10y`
+            );
+            if (!response.ok) throw new Error("Primary fetch failed");
+          } catch (err) {
+            if (!import.meta.env.DEV) {
+              console.log("Fallback to allorigins proxy...");
+              const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=10y`)}`;
+              response = await fetch(fallbackUrl);
+            } else {
+              throw err;
+            }
           }
-        }
-        
-        if (!response.ok) {
-           throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
+          
+          if (!response.ok) {
+             throw new Error(`API error: ${response.status} ${response.statusText}`);
+          }
+          
+          const data = await response.json();
 
-        if (!data || !data.chart || !data.chart.result) {
-            throw new Error("No data returned from API");
-        }
+          if (!data || !data.chart || !data.chart.result) {
+              throw new Error("No data returned from API");
+          }
 
-        const result = data.chart.result[0];
-        const timestamps = result.timestamp;
-        const closes = result.indicators.quote[0].close;
+          const result = data.chart.result[0];
+          timestamps = result.timestamp;
+          closes = result.indicators.quote[0].close;
+        }
 
         // Filter out null values
         const validData = [];
@@ -81,31 +105,7 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
         const labels = validData.map(d => d.dateStr);
         const values = validData.map(d => d.price);
 
-        updateStats(values);
-
-        setChartData({
-          labels,
-          datasets: [
-            {
-              fill: true,
-              label,
-              data: values,
-              borderColor: color,
-              backgroundColor: (context) => {
-                const ctx = context.chart.ctx;
-                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                gradient.addColorStop(0, getGradientRgba(color, 0.4));
-                gradient.addColorStop(1, getGradientRgba(color, 0.0));
-                return gradient;
-              },
-              borderWidth: 3,
-              pointRadius: 0,
-              pointHoverRadius: 6,
-              pointBackgroundColor: color,
-              tension: 0.1,
-            },
-          ],
-        });
+        setFullData({ labels, values });
       } catch (err) {
         console.error(`Error fetching ${label} data:`, err);
         setError(err.message);
@@ -174,7 +174,7 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
     let isMounted = true;
 
     fetchData().then(() => {
-      if (isMounted) {
+      if (isMounted && ticker !== 'VNINDEX') {
         liveInterval = setInterval(fetchLivePrice, 2000);
       }
     });
@@ -183,7 +183,85 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
       isMounted = false;
       if (liveInterval) clearInterval(liveInterval);
     };
-  }, [ticker, label, color, interval, range]);
+  }, [ticker, label, interval]); // Removed color and range from fetch dependency
+
+  // Effect to slice fullData based on range prop
+  useEffect(() => {
+    if (!fullData) return;
+
+    let pointsToShow = fullData.labels.length;
+    // 5 years of weekly data = 260 weeks, or 5 years of daily data = 1250 days.
+    // Approximations based on trading days (250/yr) or calendar days (365/yr)
+    const ptsPerYear = interval === '1wk' ? 52 : 250; 
+    
+    if (range === '1y') pointsToShow = ptsPerYear * 1;
+    else if (range === '2y') pointsToShow = ptsPerYear * 2;
+    else if (range === '3y') pointsToShow = ptsPerYear * 3;
+    else if (range === '5y') pointsToShow = ptsPerYear * 5;
+    else if (range === 'max') pointsToShow = fullData.labels.length;
+    else pointsToShow = ptsPerYear * (parseInt(range) || 5);
+
+    const startIdx = Math.max(0, fullData.labels.length - pointsToShow);
+    
+    const slicedLabels = fullData.labels.slice(startIdx);
+    const slicedValues = fullData.values.slice(startIdx);
+
+    const updateStats = (values) => {
+      const currentRate = values[values.length - 1];
+      const previousRate = values.length > 1 ? values[values.length - 2] : currentRate;
+      const change = currentRate - previousRate;
+      const changePercent = previousRate ? (change / previousRate) * 100 : 0;
+
+      const highestPriceAllTime = Math.max(...fullData.values);
+      const dropFromHighAllTimePercent = highestPriceAllTime ? ((currentRate - highestPriceAllTime) / highestPriceAllTime) * 100 : 0;
+
+      const highestPriceRange = Math.max(...values);
+      const dropFromHighRangePercent = highestPriceRange ? ((currentRate - highestPriceRange) / highestPriceRange) * 100 : 0;
+
+      if (onDataLoadedRef.current) {
+          onDataLoadedRef.current({
+            current: currentRate.toFixed(2),
+            change: change.toFixed(2),
+            changePercent: changePercent.toFixed(2),
+            isUp: change >= 0,
+            highestAllTime: highestPriceAllTime.toFixed(2),
+            dropFromHighAllTime: dropFromHighAllTimePercent.toFixed(2),
+            highest5y: highestPriceRange.toFixed(2),
+            dropFromHigh5y: dropFromHighRangePercent.toFixed(2),
+            // Legacy mapping for existing dashboards that only expect 'highest'
+            highest: highestPriceAllTime.toFixed(2),
+            dropFromHigh: dropFromHighAllTimePercent.toFixed(2),
+          });
+      }
+    };
+
+    updateStats(slicedValues);
+
+    setChartData({
+      labels: slicedLabels,
+      datasets: [
+        {
+          fill: true,
+          label,
+          data: slicedValues,
+          borderColor: color,
+          backgroundColor: (context) => {
+            const ctx = context.chart.ctx;
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, getGradientRgba(color, 0.4));
+            gradient.addColorStop(1, getGradientRgba(color, 0.0));
+            return gradient;
+          },
+          borderWidth: 3,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointBackgroundColor: color,
+          tension: 0.1,
+        },
+      ],
+    });
+
+  }, [fullData, range, label, color, interval]);
 
   const options = {
     responsive: true,

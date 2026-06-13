@@ -30,6 +30,10 @@ const getSectorColor = (sectorName) => {
 const VnStockDashboard = ({ onClose }) => {
   const [tickerInput, setTickerInput] = useState('');
   const [searchTickers, setSearchTickers] = useState([]);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [vnIndexRange, setVnIndexRange] = useState('1y');
+
+  const [detailChartConfig, setDetailChartConfig] = useState(null);
   const [statsMap, setStatsMap] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
@@ -299,19 +303,39 @@ const VnStockDashboard = ({ onClose }) => {
            <>
              <div style={{ marginBottom: '3rem' }}>
                <section className="glass-card" style={{ borderColor: '#ef444430' }}>
-                 <div className="chart-header" style={{ marginBottom: '1.5rem' }}>
+                 <div className="chart-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                    <h2 className="chart-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-                     <span>📊</span> Biểu Đồ Thị Trường (VN30 ETF)
+                     <span>📊</span> Chỉ Số VN-INDEX
                    </h2>
-                   <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px', marginBottom: 0 }}>Mô phỏng theo chỉ số VN-INDEX</p>
+                   <div className="year-selector" style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+                     {['1y', '2y', '3y', '5y', 'max'].map(y => (
+                       <button
+                         key={y}
+                         onClick={() => setVnIndexRange(y)}
+                         style={{
+                           padding: '4px 12px',
+                           borderRadius: '6px',
+                           border: vnIndexRange === y ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.15)',
+                           background: vnIndexRange === y ? 'rgba(239,68,68,0.15)' : 'transparent',
+                           color: vnIndexRange === y ? '#ef4444' : '#94a3b8',
+                           cursor: 'pointer',
+                           fontSize: '0.8rem',
+                           fontWeight: 600,
+                           transition: 'all 0.2s',
+                         }}
+                       >
+                         {y === 'max' ? 'All' : y.toUpperCase()}
+                       </button>
+                     ))}
+                   </div>
                  </div>
                  <div className="chart-container" style={{ height: '400px', position: 'relative' }}>
                    <YahooChart 
-                     ticker="E1VFVN30.VN" 
-                     label="Quỹ ETF VN30" 
+                     ticker="VNINDEX" 
+                     label="VN-INDEX" 
                      color="#ef4444" 
                      interval="1d"
-                     range="5y"
+                     range={vnIndexRange}
                    />
                  </div>
                </section>
