@@ -124,7 +124,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
     };
   }, [timeframe]); // Re-run when timeframe changes
 
-  const triggerAlert = (symbol, price, priceChange, volRatio, volUsd) => {
+  const triggerAlert = async (symbol, price, priceChange, volRatio, volUsd) => {
     const now = Date.now();
     const lastAlert = cooldownsRef.current[symbol];
     
@@ -135,6 +135,31 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
     
     cooldownsRef.current[symbol] = now;
     
+    let buySellStats = null;
+    try {
+      // Fetch data for the current and previous candles
+      const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=2`);
+      const data = await res.json();
+      if (data && data.length === 2) {
+        const prevQ = parseFloat(data[0][7]);
+        const prevBuy = parseFloat(data[0][10]);
+        const prevSell = prevQ - prevBuy;
+        
+        const currQ = parseFloat(data[1][7]);
+        const currBuy = parseFloat(data[1][10]);
+        const currSell = currQ - currBuy;
+        
+        buySellStats = {
+          prevBuyPct: prevQ > 0 ? (prevBuy / prevQ) * 100 : 50,
+          prevSellPct: prevQ > 0 ? (prevSell / prevQ) * 100 : 50,
+          currBuyPct: currQ > 0 ? (currBuy / currQ) * 100 : 50,
+          currSellPct: currQ > 0 ? (currSell / currQ) * 100 : 50
+        };
+      }
+    } catch (e) {
+      console.error("Failed to fetch buy sell ratio", e);
+    }
+    
     const newSpike = {
       id: Date.now() + symbol,
       symbol,
@@ -143,6 +168,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
       priceChange,
       volRatio,
       volUsd,
+      buySellStats,
       isNew: true
     };
     
@@ -270,6 +296,33 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
                         <span>Giá: <b style={{ color: '#fff' }}>${spike.price < 0.01 ? spike.price.toFixed(6) : spike.price.toFixed(3)}</b></span>
                         <span style={{ color: '#34d399', fontWeight: 'bold' }}>Tăng: +{spike.priceChange.toFixed(2)}%</span>
                       </div>
+                      
+                      {spike.buySellStats && (
+                        <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
+                          <div style={{ flex: 1, minWidth: '100px' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Nến Trước</div>
+                            <div style={{ display: 'flex', height: '6px', background: '#334155', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{ width: `${spike.buySellStats.prevBuyPct}%`, background: '#10b981' }}></div>
+                              <div style={{ width: `${spike.buySellStats.prevSellPct}%`, background: '#ef4444' }}></div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginTop: '4px', fontWeight: 'bold' }}>
+                              <span style={{ color: '#10b981' }}>M: {spike.buySellStats.prevBuyPct.toFixed(0)}%</span>
+                              <span style={{ color: '#ef4444' }}>B: {spike.buySellStats.prevSellPct.toFixed(0)}%</span>
+                            </div>
+                          </div>
+                          <div style={{ flex: 1, minWidth: '100px' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Nến Hiện Tại</div>
+                            <div style={{ display: 'flex', height: '6px', background: '#334155', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{ width: `${spike.buySellStats.currBuyPct}%`, background: '#10b981' }}></div>
+                              <div style={{ width: `${spike.buySellStats.currSellPct}%`, background: '#ef4444' }}></div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginTop: '4px', fontWeight: 'bold' }}>
+                              <span style={{ color: '#10b981' }}>M: {spike.buySellStats.currBuyPct.toFixed(0)}%</span>
+                              <span style={{ color: '#ef4444' }}>B: {spike.buySellStats.currSellPct.toFixed(0)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
