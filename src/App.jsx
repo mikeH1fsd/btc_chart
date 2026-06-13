@@ -80,7 +80,13 @@ function App() {
   };
 
   if (btcDetailConfig) {
-    return <BtcDetailChart onClose={() => setBtcDetailConfig(null)} interval={btcDetailConfig.interval} years={btcDetailConfig.years} />;
+    return <BtcDetailChart 
+      onClose={() => setBtcDetailConfig(null)} 
+      interval={btcDetailConfig.interval} 
+      years={btcDetailConfig.years} 
+      symbol={btcDetailConfig.symbol || 'BTCUSDT'}
+      title={btcDetailConfig.title || 'Bitcoin / USDT'}
+    />;
   }
   if (showUs100Detail) {
     return <Us100DetailChart onClose={() => setShowUs100Detail(false)} />;
