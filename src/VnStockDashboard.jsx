@@ -43,8 +43,10 @@ const VnStockDashboard = ({ onClose }) => {
           ? '/yahoo' 
           : 'https://corsproxy.io/?https://query1.finance.yahoo.com';
 
-        // Fetch all quotes in parallel using /v8/finance/chart
-        const promises = allTickersToFetch.map(async (t) => {
+        // Fetch each quote independently to allow incremental rendering
+        setIsLoading(false); // Stop the global loading spinner early
+        
+        allTickersToFetch.forEach(async (t) => {
           const symbol = t.includes('.') ? t : (t === 'PVS' ? 'PVS.HN' : `${t}.VN`);
           try {
              let res;
@@ -87,34 +89,26 @@ const VnStockDashboard = ({ onClose }) => {
              const dropFromHighAllTime = highestAllTime ? ((currentPrice - highestAllTime) / highestAllTime) * 100 : 0;
              const dropFromHigh5y = highest5y ? ((currentPrice - highest5y) / highest5y) * 100 : 0;
 
-             return { ticker: t, currentPrice, changePercent, highestAllTime, dropFromHighAllTime, highest5y, dropFromHigh5y };
-          } catch(e) { return null; }
-        });
-        
-        const results = await Promise.all(promises);
-        
-        setStatsMap(prev => {
-          const newMap = { ...prev };
-          results.forEach(r => {
-             if (r && !newMap[r.ticker]) {
-                newMap[r.ticker] = {
-                  current: r.currentPrice.toFixed(2),
-                  changePercent: r.changePercent.toFixed(2),
-                  isUp: r.changePercent >= 0,
-                  isExpanded: false,
-                  highestAllTime: r.highestAllTime.toFixed(2),
-                  dropFromHighAllTime: r.dropFromHighAllTime.toFixed(2),
-                  highest5y: r.highest5y.toFixed(2),
-                  dropFromHigh5y: r.dropFromHigh5y.toFixed(2)
+             setStatsMap(prev => {
+                if (prev[t]) return prev; // Already fetched
+                return {
+                  ...prev,
+                  [t]: {
+                    current: currentPrice.toFixed(2),
+                    changePercent: changePercent.toFixed(2),
+                    isUp: changePercent >= 0,
+                    isExpanded: false,
+                    highestAllTime: highestAllTime.toFixed(2),
+                    dropFromHighAllTime: dropFromHighAllTime.toFixed(2),
+                    highest5y: highest5y.toFixed(2),
+                    dropFromHigh5y: dropFromHigh5y.toFixed(2)
+                  }
                 };
-             }
-          });
-          return newMap;
+             });
+          } catch(e) {}
         });
-        setIsLoading(false);
       } catch (err) {
         console.error(err);
-        setIsLoading(false);
       }
     };
     fetchPrices();
@@ -302,7 +296,22 @@ const VnStockDashboard = ({ onClose }) => {
              <p>Đang tải dữ liệu thị trường...</p>
            </div>
         ) : (
-          <>
+           <>
+             <div style={{ marginBottom: '3rem' }}>
+               <h2 style={{ color: '#f8fafc', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+                 <span>📊</span> Chỉ Số VN-INDEX
+               </h2>
+               <div className="glass-card" style={{ height: '500px', padding: '1.5rem', borderTop: '4px solid #ef4444', background: 'rgba(30, 41, 59, 0.7)' }}>
+                 <YahooChart 
+                   ticker="^VNINDEX.VN" 
+                   label="VN-INDEX" 
+                   color="#ef4444" 
+                   interval="1d"
+                   range="max"
+                 />
+               </div>
+             </div>
+
             {searchTickers.length > 0 && (
               <div style={{ marginBottom: '3rem' }}>
                 <h2 style={{ color: '#f8fafc', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
