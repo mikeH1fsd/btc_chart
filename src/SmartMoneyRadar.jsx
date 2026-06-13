@@ -9,6 +9,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
   const [spikes, setSpikes] = useState([]);
   
   // Customizable settings
+  const [timeframe, setTimeframe] = useState('15m');
   const [volMultiplier, setVolMultiplier] = useState(3.0);
   const [priceChangePct, setPriceChangePct] = useState(1.5);
   
@@ -23,6 +24,8 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
 
   useEffect(() => {
     let isMounted = true;
+    setIsInitializing(true);
+    setSpikes([]);
 
     const initializeRadar = async () => {
       try {
@@ -41,15 +44,26 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
         const baselines = {};
         const streams = [];
         
+        const getTimeframeDivisor = (tf) => {
+          switch(tf) {
+            case '15m': return 96;
+            case '30m': return 48;
+            case '1h': return 24;
+            case '4h': return 6;
+            case '1d': return 1;
+            default: return 96;
+          }
+        };
+        const divisor = getTimeframeDivisor(timeframe);
+        
         topCoins.forEach(coin => {
-          // Tính trung bình volume 15m (1 ngày có 96 nến 15m)
-          const avg15mVol = parseFloat(coin.quoteVolume) / 96;
+          const avgVol = parseFloat(coin.quoteVolume) / divisor;
           baselines[coin.symbol] = {
-            avg15mVol,
+            avgVol,
             price: parseFloat(coin.lastPrice),
             symbol: coin.symbol
           };
-          streams.push(`${coin.symbol.toLowerCase()}@kline_15m`);
+          streams.push(`${coin.symbol.toLowerCase()}@kline_${timeframe}`);
         });
         
         baselinesRef.current = baselines;
@@ -82,7 +96,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
           const baseline = baselinesRef.current[symbol];
           if (!baseline) return;
           
-          const volRatio = currentVol / baseline.avg15mVol;
+          const volRatio = currentVol / baseline.avgVol;
           const priceChange = ((closePrice - openPrice) / openPrice) * 100;
           
           const currentSettings = settingsRef.current;
@@ -108,7 +122,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
         wsRef.current.close();
       }
     };
-  }, []); // Run only once, settings changes handled via ref
+  }, [timeframe]); // Re-run when timeframe changes
 
   const triggerAlert = (symbol, price, priceChange, volRatio, volUsd) => {
     const now = Date.now();
@@ -163,10 +177,24 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
           <h2 style={{ color: '#fff', fontSize: '2rem', fontWeight: 800, margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="radar-icon-spin" style={{ fontSize: '1.8rem' }}>🎯</span> Radar Dòng Tiền
           </h2>
-          <p style={{ color: '#94a3b8', margin: 0 }}>Quét {TOP_COINS_COUNT}+ Coin có thanh khoản cao nhất Binance theo thời gian thực (Nến 15M)</p>
+          <p style={{ color: '#94a3b8', margin: 0 }}>Quét {TOP_COINS_COUNT}+ Coin có thanh khoản cao nhất Binance (Khung {timeframe.toUpperCase()})</p>
         </div>
         
         <div className="radar-controls-mobile" style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 20px', borderRadius: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <label style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Khung T.Gian</label>
+            <select 
+              value={timeframe} 
+              onChange={e => setTimeframe(e.target.value)}
+              style={{ background: 'rgba(0,0,0,0.5)', color: 'white', border: '1px solid #475569', borderRadius: '4px', padding: '4px 5px', cursor: 'pointer' }}
+            >
+              <option value="15m">15 Phút</option>
+              <option value="30m">30 Phút</option>
+              <option value="1h">1 Giờ</option>
+              <option value="4h">4 Giờ</option>
+              <option value="1d">1 Ngày</option>
+            </select>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             <label style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Bơm Volume (x lần): {volMultiplier}x</label>
             <input type="range" min="1.5" max="10" step="0.5" value={volMultiplier} onChange={e => setVolMultiplier(parseFloat(e.target.value))} />
@@ -247,7 +275,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
                   
                   <div className="radar-spike-actions-mobile" style={{ display: 'flex', alignItems: 'center', gap: '25px', flexWrap: 'wrap' }}>
                     <div style={{ textAlign: 'right', flex: 1 }}>
-                      <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '4px' }}>Dòng tiền (15P)</div>
+                      <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '4px' }}>Dòng tiền ({timeframe.toUpperCase()})</div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', justifyContent: 'flex-end' }}>
                         <span style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#10b981' }}>${formatMoney(spike.volUsd)}</span>
                         <span style={{ padding: '2px 8px', background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
@@ -260,7 +288,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
                       <button
                         onClick={() => {
                           if (onViewChart) {
-                            onViewChart({ interval: '15m', years: 1, symbol: spike.symbol, title: `${spike.symbol.replace('USDT', '')} / USDT` });
+                            onViewChart({ interval: timeframe, years: 1, symbol: spike.symbol, title: `${spike.symbol.replace('USDT', '')} / USDT` });
                           }
                         }}
                         style={{
@@ -281,7 +309,7 @@ const SmartMoneyRadar = ({ onClose, onViewChart }) => {
                       </button>
                       <button
                         onClick={() => {
-                          const prompt = `Tại sao đồng tiền ảo ${spike.symbol.replace('USDT', '')} lại có dòng tiền đột biến x${spike.volRatio.toFixed(1)} lần và tăng vọt +${spike.priceChange.toFixed(2)}% trên thị trường crypto trong 15 phút vừa qua? Có tin tức gì mớI?`;
+                          const prompt = `Tại sao đồng tiền ảo ${spike.symbol.replace('USDT', '')} lại có dòng tiền đột biến x${spike.volRatio.toFixed(1)} lần và tăng vọt +${spike.priceChange.toFixed(2)}% trên thị trường crypto trong khung ${timeframe.toUpperCase()} vừa qua? Có tin tức gì mớI?`;
                           window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank');
                         }}
                         style={{
