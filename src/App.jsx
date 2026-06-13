@@ -10,6 +10,7 @@ import TopCoinsDashboard from './TopCoinsDashboard';
 import TrendingCoinsDashboard from './TrendingCoinsDashboard';
 import VnStockDashboard from './VnStockDashboard';
 import AIChatDashboard from './AIChatDashboard';
+import SmartMoneyRadar from './SmartMoneyRadar';
 
 const INITIAL_CHARTS = [
   { id: 'usdhkd', title: 'USD / HKD', currency: 'HKD', source: 'Frankfurter API', color: '#38bdf8', historyTitle: 'USD/HKD Exchange Rate History', timeframe: '10 Years' },
@@ -38,6 +39,7 @@ function App() {
   const [showTrendingCoins, setShowTrendingCoins] = useState(false);
   const [showVnStock, setShowVnStock] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showRadar, setShowRadar] = useState(false);
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
@@ -97,6 +99,10 @@ function App() {
 
   if (showAIChat) {
     return <AIChatDashboard onClose={() => setShowAIChat(false)} />;
+  }
+
+  if (showRadar) {
+    return <SmartMoneyRadar onClose={() => setShowRadar(false)} />;
   }
 
   return (
@@ -198,6 +204,38 @@ function App() {
           >
             <span>🤖</span> AI Chat Box
           </button>
+          
+          <button 
+            onClick={() => setShowRadar(true)}
+            style={{
+              padding: '10px 20px',
+              background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+              border: 'none',
+              color: 'white',
+              borderRadius: '24px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '1rem',
+              boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              animation: 'pulse-red 2s infinite'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(239, 68, 68, 0.3)'; }}
+          >
+            <span className="radar-icon-spin" style={{ display: 'inline-block' }}>🎯</span> Smart Radar
+          </button>
+          
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes pulse-red {
+              0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+              70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+              100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            }
+          `}} />
         </div>
       </header>
 
