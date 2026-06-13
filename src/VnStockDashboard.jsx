@@ -298,18 +298,22 @@ const VnStockDashboard = ({ onClose }) => {
         ) : (
            <>
              <div style={{ marginBottom: '3rem' }}>
-               <h2 style={{ color: '#f8fafc', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
-                 <span>📊</span> Chỉ Số VN-INDEX
-               </h2>
-               <div className="glass-card" style={{ height: '500px', padding: '1.5rem', borderTop: '4px solid #ef4444', background: 'rgba(30, 41, 59, 0.7)' }}>
-                 <YahooChart 
-                   ticker="^VNINDEX.VN" 
-                   label="VN-INDEX" 
-                   color="#ef4444" 
-                   interval="1d"
-                   range="max"
-                 />
-               </div>
+               <section className="glass-card" style={{ borderColor: '#ef444430' }}>
+                 <div className="chart-header" style={{ marginBottom: '1.5rem' }}>
+                   <h2 className="chart-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                     <span>📊</span> Chỉ Số VN-INDEX
+                   </h2>
+                 </div>
+                 <div className="chart-container" style={{ height: '400px', position: 'relative' }}>
+                   <YahooChart 
+                     ticker="^VNINDEX.VN" 
+                     label="VN-INDEX" 
+                     color="#ef4444" 
+                     interval="1d"
+                     range="5y"
+                   />
+                 </div>
+               </section>
              </div>
 
             {searchTickers.length > 0 && (
