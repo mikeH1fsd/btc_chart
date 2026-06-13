@@ -41,9 +41,7 @@ const YahooChart = ({ ticker, label, color, isPercentage, onDataLoaded, interval
           const toTime = Math.floor(Date.now() / 1000);
           const fromTime = toTime - (10 * 365 * 24 * 60 * 60); // fetch 10 years max
           
-          const proxyUrl = import.meta.env.DEV 
-            ? `https://corsproxy.io/?https://services.entrade.com.vn/chart-api/v2/ohlcs/index?resolution=1D&symbol=VNINDEX&from=${fromTime}&to=${toTime}`
-            : `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://services.entrade.com.vn/chart-api/v2/ohlcs/index?resolution=1D&symbol=VNINDEX&from=${fromTime}&to=${toTime}`)}`;
+          const proxyUrl = `https://corsproxy.io/?https://services.entrade.com.vn/chart-api/v2/ohlcs/index?resolution=1D&symbol=VNINDEX&from=${fromTime}&to=${toTime}`;
             
           response = await fetch(proxyUrl);
           if (!response.ok) throw new Error("VNINDEX fetch failed");
