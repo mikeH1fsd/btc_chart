@@ -167,6 +167,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
     else if (currentInterval === '30m') currentMinutes = 30;
     else if (currentInterval === '15m') currentMinutes = 15;
     else if (currentInterval === '5m') currentMinutes = 5;
+    else if (currentInterval === '1m') currentMinutes = 1;
     return Math.max(1, targetMinutes / currentMinutes);
   };
 
@@ -413,6 +414,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           else if (currentInterval === '30m') msPerCandle = 30 * 60 * 1000;
           else if (currentInterval === '15m') msPerCandle = 15 * 60 * 1000;
           else if (currentInterval === '5m') msPerCandle = 5 * 60 * 1000;
+          else if (currentInterval === '1m') msPerCandle = 1 * 60 * 1000;
           
           currentEndTime -= limit * msPerCandle;
         }
@@ -703,6 +705,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         else if (currentInterval === '30m') initialCandles = 5760; // 4 months
         else if (currentInterval === '15m') initialCandles = 5760; // 2 months
         else if (currentInterval === '5m') initialCandles = 8640; // 1 month
+        else if (currentInterval === '1m') initialCandles = 10080; // 7 days
         
         const data = await fetchHistoricalKlines(initialCandles, Date.now(), (progress) => {
           setLoadingProgress(progress);
@@ -762,6 +765,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       else if (currentInterval === '30m') minutesPerCandle = 30;
       else if (currentInterval === '15m') minutesPerCandle = 15;
       else if (currentInterval === '5m') minutesPerCandle = 5;
+      else if (currentInterval === '1m') minutesPerCandle = 1;
       
       const candlesToFetch = Math.ceil((extendYears * 365 * 24 * 60) / minutesPerCandle);
       
@@ -1473,8 +1477,8 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       <div className="modal-header-responsive" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '70px', background: 'rgba(15, 23, 42, 0.95)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2rem', zIndex: 100, backdropFilter: 'blur(10px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.5rem' }}>{title}</h2>
-          <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px', marginRight: '10px' }}>
-            {['1d', '4h', '1h', '30m', '15m', '5m'].map(tf => (
+          <div style={{ display: 'flex', gap: '4px', background: 'rgba(15, 23, 42, 0.6)', padding: '4px', borderRadius: '8px' }}>
+            {['1d', '4h', '1h', '30m', '15m', '5m', '1m'].map(tf => (
               <button
                 key={tf}
                 onClick={() => { setIsLoading(true); setCurrentInterval(tf); }}
