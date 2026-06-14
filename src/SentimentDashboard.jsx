@@ -44,7 +44,7 @@ const SentimentDashboard = ({ onClose }) => {
     setCopied(false);
 
     try {
-      const response = await fetch(`https://api.stocktwits.com/api/2/streams/symbol/${coin.baseAsset}.X.json`);
+      const response = await fetch(`https://corsproxy.io/?https://api.stocktwits.com/api/2/streams/symbol/${coin.baseAsset}.X.json`);
       if (!response.ok) {
         throw new Error('StockTwits fetch failed');
       }
