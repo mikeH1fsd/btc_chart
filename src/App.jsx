@@ -11,6 +11,7 @@ import TrendingCoinsDashboard from './TrendingCoinsDashboard';
 import VnStockDashboard from './VnStockDashboard';
 import AIChatDashboard from './AIChatDashboard';
 import SmartMoneyRadar from './SmartMoneyRadar';
+import SentimentDashboard from './SentimentDashboard';
 
 const INITIAL_CHARTS = [
   { id: 'usdhkd', title: 'USD / HKD', currency: 'HKD', source: 'Frankfurter API', color: '#38bdf8', historyTitle: 'USD/HKD Exchange Rate History', timeframe: '10 Years' },
@@ -40,6 +41,7 @@ function App() {
   const [showVnStock, setShowVnStock] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showRadar, setShowRadar] = useState(false);
+  const [showSentiment, setShowSentiment] = useState(false);
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
@@ -117,6 +119,10 @@ function App() {
         }} 
       />
     );
+  }
+
+  if (showSentiment) {
+    return <SentimentDashboard onClose={() => setShowSentiment(false)} />;
   }
 
   return (
@@ -241,6 +247,29 @@ function App() {
             onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(239, 68, 68, 0.3)'; }}
           >
             <span className="radar-icon-spin" style={{ display: 'inline-block' }}>🎯</span> Smart Radar
+          </button>
+          
+          <button 
+            onClick={() => setShowSentiment(true)}
+            style={{
+              padding: '10px 20px',
+              background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+              border: 'none',
+              color: 'white',
+              borderRadius: '24px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '1rem',
+              boxShadow: '0 4px 15px rgba(14, 165, 233, 0.3)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(14, 165, 233, 0.4)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(14, 165, 233, 0.3)'; }}
+          >
+            <span>🧠</span> Phân Tích Tâm Lý (AI)
           </button>
           
           <style dangerouslySetInnerHTML={{__html: `

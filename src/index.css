@@ -371,3 +371,4 @@ body {
     font-size: 1.1rem !important;
   }
 }
+.sentiment-container { display: flex; flex: 1; overflow: hidden; } @media (max-width: 768px) { .sentiment-container { flex-direction: column; overflow-y: auto; } .sentiment-left-panel { width: 100% !important; min-height: 250px; border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.05); } .sentiment-right-panel { flex: none !important; height: auto; overflow: visible !important; } } 
