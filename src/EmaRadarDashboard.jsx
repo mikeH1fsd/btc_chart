@@ -49,16 +49,27 @@ const calculateRSI = (data, period = 14) => {
 const EmaRadarDashboard = ({ onClose, onViewChart }) => {
   const CACHE_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
   
-  const [selectedIndicator, setSelectedIndicator] = useState(null); // 'ema' or 'rsi'
+  const [selectedIndicators, setSelectedIndicators] = useState([]); // ['ema', 'rsi']
+  const [isSelectionMode, setIsSelectionMode] = useState(true);
   const [results, setResults] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [totalCoins, setTotalCoins] = useState(0);
   const [lastScanTime, setLastScanTime] = useState(null);
 
-  const startScan = async (indicatorType, forceRescan = false) => {
-    setSelectedIndicator(indicatorType);
-    const CACHE_KEY = indicatorType === 'ema' ? 'emaRadarCache_v2' : 'rsiRadarCache_v1';
+  const toggleIndicator = (type) => {
+    setSelectedIndicators(prev => 
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+
+  const startScan = async (forceRescan = false) => {
+    if (selectedIndicators.length === 0) return;
+    setIsSelectionMode(false);
+    
+    // Sort array to make cache key deterministic
+    const sortedTypes = [...selectedIndicators].sort();
+    const CACHE_KEY = `confluenceCache_${sortedTypes.join('_')}_v1`;
     
     if (!forceRescan) {
       const cached = localStorage.getItem(CACHE_KEY);
@@ -97,38 +108,67 @@ const EmaRadarDashboard = ({ onClose, onViewChart }) => {
         
         const promises = batch.map(async (symbol) => {
           try {
-            if (indicatorType === 'ema') {
+            let emaData = null;
+            let rsiData = null;
+            let isValid = true;
+
+            // 1. Check EMA if selected
+            if (sortedTypes.includes('ema')) {
               const klineRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=1000`);
-              if (!klineRes.ok) return null;
-              const klines = await klineRes.json();
-              if (klines.length < 300) return null;
-              const closes = klines.map(k => parseFloat(k[4]));
-              const closeTimes = klines.map(k => k[0]);
-              const ema25 = calculateEMA(closes, 25);
-              const ema200 = calculateEMA(closes, 200);
-              const startIdx = closes.length - 24;
-              const endIdx = closes.length - 1;
-              for (let j = startIdx; j <= endIdx; j++) {
-                if (ema25[j - 1] <= ema200[j - 1] && ema25[j] > ema200[j]) {
-                  return { symbol, timeAgo: endIdx - j, time: new Date(closeTimes[j]).toLocaleString(), closePrice: closes[j] };
+              if (!klineRes.ok) { isValid = false; }
+              else {
+                const klines = await klineRes.json();
+                if (klines.length < 300) { isValid = false; }
+                else {
+                  const closes = klines.map(k => parseFloat(k[4]));
+                  const closeTimes = klines.map(k => k[0]);
+                  const ema25 = calculateEMA(closes, 25);
+                  const ema200 = calculateEMA(closes, 200);
+                  const startIdx = closes.length - 24;
+                  const endIdx = closes.length - 1;
+                  
+                  let foundEma = false;
+                  for (let j = startIdx; j <= endIdx; j++) {
+                    if (ema25[j - 1] <= ema200[j - 1] && ema25[j] > ema200[j]) {
+                      emaData = { timeAgo: endIdx - j, time: new Date(closeTimes[j]).toLocaleString() };
+                      foundEma = true;
+                      break;
+                    }
+                  }
+                  if (!foundEma) isValid = false;
                 }
               }
-            } else if (indicatorType === 'rsi') {
+            }
+
+            // 2. Check RSI if selected and EMA hasn't failed
+            if (isValid && sortedTypes.includes('rsi')) {
               const klineRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=100`);
-              if (!klineRes.ok) return null;
-              const klines = await klineRes.json();
-              if (klines.length < 20) return null;
-              const closes = klines.map(k => parseFloat(k[4]));
-              const closeTimes = klines.map(k => k[0]);
-              const rsi = calculateRSI(closes, 14);
-              const startIdx = closes.length - 14;
-              const endIdx = closes.length - 1;
-              // find the most recent oversold inside 14 days
-              for (let j = endIdx; j >= startIdx; j--) {
-                if (rsi[j] !== null && rsi[j] < 30) {
-                  return { symbol, timeAgo: endIdx - j, time: new Date(closeTimes[j]).toLocaleDateString(), closePrice: closes[j], rsiValue: rsi[j].toFixed(2) };
+              if (!klineRes.ok) { isValid = false; }
+              else {
+                const klines = await klineRes.json();
+                if (klines.length < 20) { isValid = false; }
+                else {
+                  const closes = klines.map(k => parseFloat(k[4]));
+                  const closeTimes = klines.map(k => k[0]);
+                  const rsi = calculateRSI(closes, 14);
+                  const startIdx = closes.length - 14;
+                  const endIdx = closes.length - 1;
+                  
+                  let foundRsi = false;
+                  for (let j = endIdx; j >= startIdx; j--) {
+                    if (rsi[j] !== null && rsi[j] < 30) {
+                      rsiData = { timeAgo: endIdx - j, time: new Date(closeTimes[j]).toLocaleDateString(), value: rsi[j].toFixed(2) };
+                      foundRsi = true;
+                      break;
+                    }
+                  }
+                  if (!foundRsi) isValid = false;
                 }
               }
+            }
+
+            if (isValid) {
+              return { symbol, emaData, rsiData };
             }
             return null;
           } catch (err) {
@@ -143,7 +183,13 @@ const EmaRadarDashboard = ({ onClose, onViewChart }) => {
         await new Promise(r => setTimeout(r, 300));
       }
 
-      foundResults.sort((a, b) => a.timeAgo - b.timeAgo);
+      // Sort by whatever has the most recent signal
+      foundResults.sort((a, b) => {
+        let minAgoA = Math.min(a.emaData?.timeAgo ?? Infinity, a.rsiData?.timeAgo ?? Infinity);
+        let minAgoB = Math.min(b.emaData?.timeAgo ?? Infinity, b.rsiData?.timeAgo ?? Infinity);
+        return minAgoA - minAgoB;
+      });
+      
       setResults(foundResults);
       const timestamp = Date.now();
       setLastScanTime(new Date(timestamp).toLocaleString());
@@ -156,9 +202,9 @@ const EmaRadarDashboard = ({ onClose, onViewChart }) => {
   };
 
   useEffect(() => {
-    window.triggerIndicatorRescan = () => startScan(selectedIndicator, true);
+    window.triggerIndicatorRescan = () => startScan(true);
     return () => { delete window.triggerIndicatorRescan; };
-  }, [selectedIndicator]);
+  }, [selectedIndicators]);
 
   return (
     <div className="modal-overlay" style={{
@@ -173,31 +219,31 @@ const EmaRadarDashboard = ({ onClose, onViewChart }) => {
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         boxShadow: 'none'
       }}>
-        <div style={{
+        <div className="radar-header" style={{
           padding: '1.5rem 2rem', borderBottom: '1px solid rgba(255,255,255,0.05)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           background: 'rgba(15, 23, 42, 0.95)', zIndex: 10
         }}>
           <div>
             <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '1.8rem' }}>📡</span> Radar Chỉ Báo Đa Năng
+              <span style={{ fontSize: '1.8rem' }}>📡</span> Radar Hợp Lưu Đa Chỉ Báo
             </h2>
             <p style={{ margin: '0.5rem 0 0 0', color: '#94a3b8', fontSize: '0.9rem' }}>
-              {!selectedIndicator ? 'Chọn chiến lược quét kỹ thuật để tìm kiếm cơ hội.' : 
-                (selectedIndicator === 'ema' ? 'Giao cắt EMA 25 & 200 (Khung 1H) - 24 giờ qua' : 'RSI Quá bán < 30 (Khung 1 Ngày) - 14 ngày qua')}
+              {isSelectionMode ? 'Chọn một hoặc nhiều chiến lược để bắt đầu quét hợp lưu.' : 
+                `Đang quét với ${selectedIndicators.length} điều kiện: ${selectedIndicators.map(i => i.toUpperCase()).join(' & ')}`}
             </p>
           </div>
-          <div style={{display:'flex', gap:'10px'}}>
-            {selectedIndicator && !isScanning && (
+          <div className="radar-header-controls" style={{display:'flex', gap:'10px'}}>
+            {!isSelectionMode && !isScanning && (
               <button 
-                onClick={() => setSelectedIndicator(null)}
+                onClick={() => setIsSelectionMode(true)}
                 style={{
                   background: 'rgba(255,255,255,0.1)', border: 'none', color: '#f8fafc',
                   padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px'
                 }}
               >
-                ⬅️ Trở Về
+                ⬅️ Sửa Điều Kiện
               </button>
             )}
             <button 
@@ -211,49 +257,66 @@ const EmaRadarDashboard = ({ onClose, onViewChart }) => {
           </div>
         </div>
 
-        {!selectedIndicator ? (
-          <div style={{ flex: 1, padding: '3rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-            <div 
-              onClick={() => startScan('ema')}
-              style={{
-                background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.2))',
-                border: '1px solid rgba(16,185,129,0.3)', borderRadius: '20px',
-                padding: '2.5rem', width: '350px', cursor: 'pointer', transition: 'all 0.3s'
-              }}
-              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(16,185,129,0.15)'; }}
-              onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-            >
-              <div style={{fontSize:'3rem', marginBottom:'1rem'}}>📈</div>
-              <h3 style={{color:'#f8fafc', margin:'0 0 1rem 0', fontSize:'1.5rem'}}>Golden Cross (EMA)</h3>
-              <p style={{color:'#94a3b8', lineHeight:'1.6'}}>Quét Top 150 coin tìm hiện tượng <strong>EMA 25 cắt lên EMA 200</strong> trên khung thời gian 1 Giờ (1H) trong vòng 24 giờ qua.</p>
-              <ul style={{color:'#10b981', marginTop:'1.5rem', paddingLeft:'1.2rem', fontSize:'0.9rem'}}>
-                <li>Báo hiệu xu hướng tăng ngắn hạn.</li>
-                <li>Phù hợp lướt sóng Intraday.</li>
-              </ul>
-            </div>
+        {isSelectionMode ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div className="radar-options-container" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', alignContent: 'center' }}>
+              
+              <div className="radar-card-item"
+                onClick={() => toggleIndicator('ema')}
+                style={{
+                  background: selectedIndicators.includes('ema') ? 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.4))' : 'rgba(255,255,255,0.03)',
+                  border: selectedIndicators.includes('ema') ? '2px solid #10b981' : '2px solid rgba(255,255,255,0.1)',
+                  borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                  position: 'relative'
+                }}
+              >
+                {selectedIndicators.includes('ema') && (
+                  <div style={{position:'absolute', top:'1rem', right:'1rem', color:'#10b981', fontSize:'1.5rem'}}>✓</div>
+                )}
+                <div style={{fontSize:'3rem', marginBottom:'1rem'}}>📈</div>
+                <h3 style={{color:'#f8fafc', margin:'0 0 1rem 0', fontSize:'1.5rem'}}>Golden Cross (EMA)</h3>
+                <p style={{color:'#94a3b8', lineHeight:'1.6'}}>Quét hiện tượng <strong>EMA 25 cắt lên EMA 200</strong> trên khung thời gian 1 Giờ (1H) trong vòng 24 giờ qua.</p>
+              </div>
 
-            <div 
-              onClick={() => startScan('rsi')}
-              style={{
-                background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(185,28,28,0.2))',
-                border: '1px solid rgba(239,68,68,0.3)', borderRadius: '20px',
-                padding: '2.5rem', width: '350px', cursor: 'pointer', transition: 'all 0.3s'
-              }}
-              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(239,68,68,0.15)'; }}
-              onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-            >
-              <div style={{fontSize:'3rem', marginBottom:'1rem'}}>🔥</div>
-              <h3 style={{color:'#f8fafc', margin:'0 0 1rem 0', fontSize:'1.5rem'}}>RSI Quá Bán (Oversold)</h3>
-              <p style={{color:'#94a3b8', lineHeight:'1.6'}}>Quét Top 150 coin tìm hiện tượng <strong>RSI (14) rớt xuống dưới 30</strong> trên khung thời gian 1 Ngày (1D) trong vòng 14 ngày qua.</p>
-              <ul style={{color:'#f87171', marginTop:'1.5rem', paddingLeft:'1.2rem', fontSize:'0.9rem'}}>
-                <li>Báo hiệu đáy dài hạn tiềm năng.</li>
-                <li>Phù hợp mua gom (DCA).</li>
-              </ul>
+              <div className="radar-card-item"
+                onClick={() => toggleIndicator('rsi')}
+                style={{
+                  background: selectedIndicators.includes('rsi') ? 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(185,28,28,0.4))' : 'rgba(255,255,255,0.03)',
+                  border: selectedIndicators.includes('rsi') ? '2px solid #ef4444' : '2px solid rgba(255,255,255,0.1)', 
+                  borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                  position: 'relative'
+                }}
+              >
+                {selectedIndicators.includes('rsi') && (
+                  <div style={{position:'absolute', top:'1rem', right:'1rem', color:'#ef4444', fontSize:'1.5rem'}}>✓</div>
+                )}
+                <div style={{fontSize:'3rem', marginBottom:'1rem'}}>🔥</div>
+                <h3 style={{color:'#f8fafc', margin:'0 0 1rem 0', fontSize:'1.5rem'}}>RSI Quá Bán (Oversold)</h3>
+                <p style={{color:'#94a3b8', lineHeight:'1.6'}}>Quét hiện tượng <strong>RSI (14) rớt xuống dưới 30</strong> trên khung thời gian 1 Ngày (1D) trong vòng 14 ngày qua.</p>
+              </div>
+            </div>
+            
+            <div style={{ padding: '2rem', display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <button
+                onClick={() => startScan(false)}
+                disabled={selectedIndicators.length === 0}
+                style={{
+                  padding: '1rem 3rem', fontSize: '1.2rem', fontWeight: 'bold', borderRadius: '12px',
+                  background: selectedIndicators.length > 0 ? 'linear-gradient(90deg, #3b82f6, #8b5cf6)' : 'rgba(255,255,255,0.1)',
+                  color: selectedIndicators.length > 0 ? '#fff' : '#64748b',
+                  border: 'none', cursor: selectedIndicators.length > 0 ? 'pointer' : 'not-allowed',
+                  boxShadow: selectedIndicators.length > 0 ? '0 10px 25px rgba(59, 130, 246, 0.4)' : 'none',
+                  transition: 'all 0.3s'
+                }}
+              >
+                {selectedIndicators.length === 0 ? 'Chọn ít nhất 1 chỉ báo' : `Bắt Đầu Quét Kết Hợp (${selectedIndicators.length} điều kiện)`}
+              </button>
             </div>
           </div>
         ) : isScanning ? (
           <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(0,0,0,0.2)', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <h3 style={{ color: '#e2e8f0', marginBottom: '1rem', fontSize: '1.5rem' }}>Đang quét thị trường...</h3>
+            <h3 style={{ color: '#e2e8f0', marginBottom: '1rem', fontSize: '1.5rem' }}>Đang rà soát hợp lưu nhiều lớp...</h3>
+            <p style={{ color: '#64748b', marginBottom: '2rem' }}>Hệ thống đang kiểm tra chéo nhiều khung thời gian, quá trình này có thể tốn vài chục giây.</p>
             <div style={{ width: '80%', margin: '0 auto', height: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden' }}>
               <div style={{
                 height: '100%', width: `${(progress / totalCoins) * 100}%`,
@@ -268,7 +331,7 @@ const EmaRadarDashboard = ({ onClose, onViewChart }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
                 <h3 style={{ margin: 0, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#10b981' }}>●</span> Tìm thấy {results.length} tín hiệu tiềm năng
+                  <span style={{ color: '#10b981' }}>●</span> Tìm thấy {results.length} coin thỏa mãn CÙNG LÚC tất cả điều kiện
                 </h3>
                 {lastScanTime && (
                   <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '4px' }}>
@@ -291,32 +354,33 @@ const EmaRadarDashboard = ({ onClose, onViewChart }) => {
             {results.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🤷‍♂️</div>
-                Không có đồng coin nào thỏa mãn điều kiện.
+                Thị trường hiện tại không có coin nào vượt qua được lớp lọc hợp lưu này.
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
                 {results.map((res, idx) => (
                   <div key={res.symbol + idx} style={{
                     background: 'rgba(255,255,255,0.03)', padding: '1.5rem',
-                    borderRadius: '16px', border: selectedIndicator === 'ema' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
-                    display: 'flex', flexDirection: 'column', gap: '1rem'
+                    borderRadius: '16px', border: '1px solid rgba(59, 130, 246, 0.3)',
+                    display: 'flex', flexDirection: 'column', gap: '1rem',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.4rem' }}>{res.symbol}</h3>
-                      <span style={{ 
-                        background: res.timeAgo === 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)', 
-                        color: res.timeAgo === 0 ? '#34d399' : '#fbbf24', 
-                        padding: '4px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold' 
-                      }}>
-                        {res.timeAgo === 0 ? 'Mới đây nhất' : `Cách đây ${res.timeAgo} ${selectedIndicator === 'ema' ? 'giờ' : 'ngày'}`}
-                      </span>
-                    </div>
+                    <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>{res.symbol}</h3>
                     
-                    <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                      <strong>Thời điểm:</strong> {res.time}
-                      {selectedIndicator === 'rsi' && (
-                        <div style={{ color: '#f87171', marginTop: '4px', fontWeight: 'bold' }}>
-                          RSI: {res.rsiValue}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {res.emaData && (
+                        <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '10px', borderRadius: '8px', borderLeft: '3px solid #10b981' }}>
+                          <div style={{ color: '#10b981', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '4px' }}>CẮT EMA 25/200 (1H)</div>
+                          <div style={{ color: '#e2e8f0', fontSize: '0.9rem' }}>{res.emaData.timeAgo === 0 ? 'Mới cắt gần đây nhất' : `Cắt ${res.emaData.timeAgo} giờ trước`}</div>
+                          <div style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{res.emaData.time}</div>
+                        </div>
+                      )}
+                      
+                      {res.rsiData && (
+                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '10px', borderRadius: '8px', borderLeft: '3px solid #ef4444' }}>
+                          <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '4px' }}>RSI DƯỚI 30 (1D)</div>
+                          <div style={{ color: '#e2e8f0', fontSize: '0.9rem' }}>{res.rsiData.timeAgo === 0 ? 'Hôm nay' : `${res.rsiData.timeAgo} ngày trước`} - RSI: {res.rsiData.value}</div>
+                          <div style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{res.rsiData.time}</div>
                         </div>
                       )}
                     </div>
@@ -324,15 +388,17 @@ const EmaRadarDashboard = ({ onClose, onViewChart }) => {
                     <button
                       onClick={() => onViewChart({
                         symbol: res.symbol,
-                        interval: selectedIndicator === 'ema' ? '1h' : '1d',
+                        interval: selectedIndicators[0] === 'rsi' && selectedIndicators.length === 1 ? '1d' : '1h',
                         years: 1,
                         title: `${res.symbol} - Radar Signal`
                       })}
                       style={{
-                        padding: '10px', background: '#3b82f6', color: 'white',
-                        border: 'none', borderRadius: '8px', fontWeight: 'bold',
-                        cursor: 'pointer', marginTop: 'auto'
+                        padding: '12px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', color: 'white',
+                        border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem',
+                        cursor: 'pointer', marginTop: 'auto', transition: 'opacity 0.2s'
                       }}
+                      onMouseOver={e => e.currentTarget.style.opacity = 0.9}
+                      onMouseOut={e => e.currentTarget.style.opacity = 1}
                     >
                       Mở Biểu Đồ
                     </button>

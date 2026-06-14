@@ -372,3 +372,45 @@ body {
   }
 }
 .sentiment-container { display: flex; flex: 1; overflow: hidden; } @media (max-width: 768px) { .sentiment-container { flex-direction: column; overflow-y: auto; } .sentiment-left-panel { width: 100% !important; min-height: 250px; border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.05); } .sentiment-right-panel { flex: none !important; height: auto; overflow: visible !important; } } 
+
+/* EmaRadarDashboard Mobile */
+.radar-options-container {
+  padding: 3rem;
+  gap: 2rem;
+}
+.radar-card-item {
+  width: 350px;
+  padding: 2.5rem;
+}
+@media (max-width: 768px) {
+  .radar-options-container {
+    padding: 1rem !important;
+    gap: 1rem !important;
+  }
+  .radar-card-item {
+    width: 100% !important;
+    padding: 1.5rem !important;
+  }
+  .radar-card-item h3 {
+    font-size: 1.2rem !important;
+  }
+  .radar-card-item p {
+    font-size: 0.9rem !important;
+  }
+  .radar-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem;
+    padding: 1rem !important;
+  }
+  .radar-header h2 {
+    font-size: 1.2rem !important;
+  }
+  .radar-header p {
+    font-size: 0.8rem !important;
+  }
+  .radar-header-controls {
+    width: 100%;
+    justify-content: space-between !important;
+  }
+}

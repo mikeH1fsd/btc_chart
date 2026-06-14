@@ -82,6 +82,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
   const [measureActive, setMeasureActive] = useState(false);
   const measureActiveRef = useRef(false);
   const [showVolume, setShowVolume] = useState(true);
+  const [showRsi, setShowRsi] = useState(false);
   const measureStepRef = useRef(0); // 0: inactive, 1: ready, 2: measuring, 3: locked
   const measureStartRef = useRef(null);
   const measureCurrentRef = useRef(null);
@@ -122,12 +123,42 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
   const ema200_4HSeriesRef = useRef(null);
   const bgSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
+  const rsiSeriesRef = useRef(null);
+  const rsiSmaSeriesRef = useRef(null);
+  const rsiContainerRef = useRef(null);
+  const rsiChartInstanceRef = useRef(null);
 
   useEffect(() => {
     if (volumeSeriesRef.current) {
       volumeSeriesRef.current.applyOptions({ visible: showVolume });
     }
   }, [showVolume]);
+
+  // Robust resize handler for flex transitions
+  useEffect(() => {
+    if (!chartContainerRef.current || !rsiContainerRef.current) return;
+    
+    const resizeObserver = new ResizeObserver(() => {
+      if (chartInstanceRef.current && chartContainerRef.current) {
+        const { clientWidth, clientHeight } = chartContainerRef.current;
+        if (clientWidth > 0 && clientHeight > 0) {
+          chartInstanceRef.current.applyOptions({ width: clientWidth, height: clientHeight });
+        }
+      }
+      
+      if (rsiChartInstanceRef.current && rsiContainerRef.current) {
+        const { clientWidth, clientHeight } = rsiContainerRef.current;
+        if (clientWidth > 0 && clientHeight > 0 && showRsi) {
+          rsiChartInstanceRef.current.applyOptions({ width: clientWidth, height: clientHeight });
+        }
+      }
+    });
+
+    resizeObserver.observe(chartContainerRef.current);
+    resizeObserver.observe(rsiContainerRef.current);
+    
+    return () => resizeObserver.disconnect();
+  }, [showRsi]);
 
   const getMultiplier = (targetMinutes) => {
     let currentMinutes = 60;
@@ -201,8 +232,13 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
            avgGain = (avgGain * (period - 1) + gain) / period;
            avgLoss = (avgLoss * (period - 1) + loss) / period;
            
-           rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-           rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+           if (avgLoss === 0 && avgGain === 0) {
+             rs = 1;
+             rsi = 50;
+           } else {
+             rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+             rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+           }
        }
        
        if (i >= closesHTF[period].indexBase) {
@@ -229,8 +265,19 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
     let avgLoss = losses / period;
     
     const rsiData = [];
-    let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    let rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+    // Pad initial periods with whitespace to align logical range
+    for (let i = 0; i < period; i++) {
+      rsiData.push({ time: data[i].time });
+    }
+    
+    let rs = 1;
+    let rsi = 50;
+    if (avgLoss === 0 && avgGain === 0) {
+      rsi = 50;
+    } else {
+      rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+    }
     rsiData.push({ time: data[period].time, value: rsi });
     
     for (let i = period + 1; i < data.length; i++) {
@@ -241,14 +288,50 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       avgGain = (avgGain * (period - 1) + gain) / period;
       avgLoss = (avgLoss * (period - 1) + loss) / period;
       
-      rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+      if (avgLoss === 0 && avgGain === 0) {
+        rs = 1;
+        rsi = 50;
+      } else {
+        rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+        rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+      }
       
       rsiData.push({ time: data[i].time, value: rsi });
     }
     
     return rsiData;
   };
+  const getSmaArray = (data, period) => {
+    if (!data || data.length < period) return [];
+    const smaData = [];
+    
+    // Find first valid index (skip whitespace points)
+    let firstValidIndex = 0;
+    while (firstValidIndex < data.length && data[firstValidIndex].value === undefined) {
+      smaData.push({ time: data[firstValidIndex].time });
+      firstValidIndex++;
+    }
+    
+    if (data.length - firstValidIndex < period) return smaData;
+    
+    // Pad initial SMA period with whitespace
+    for (let i = 0; i < period - 1; i++) {
+       smaData.push({ time: data[firstValidIndex + i].time });
+    }
+    
+    let sum = 0;
+    for (let i = 0; i < period; i++) {
+      sum += data[firstValidIndex + i].value;
+    }
+    smaData.push({ time: data[firstValidIndex + period - 1].time, value: sum / period });
+    
+    for (let i = firstValidIndex + period; i < data.length; i++) {
+      sum = sum - data[i - period].value + data[i].value;
+      smaData.push({ time: data[i].time, value: sum / period });
+    }
+    return smaData;
+  };
+
 
     const applySignalsAndBackground = (data, rsiDataBase, rsiDataHTF) => {
       const bgData = [];
@@ -413,8 +496,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
             minute: '2-digit'
           });
         }
-      },
-      autoSize: true, // Automatically resize with container
+      }
     };
 
     const chart = createChart(chartContainerRef.current, chartOptions);
@@ -507,8 +589,8 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       color: '#a855f7', // purple
       lineWidth: 2,
       crosshairMarkerVisible: true,
-      priceScaleId: 'left',
-      lastValueVisible: false,
+      priceScaleId: 'right',
+      lastValueVisible: true,
       priceLineVisible: false,
     });
     ema200_4HSeriesRef.current = ema200_4HSeries;
@@ -523,11 +605,95 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
     
     chart.priceScale('volume').applyOptions({
       scaleMargins: {
-        top: 0.8,
+        top: 0.85,
         bottom: 0,
       },
     });
     volumeSeriesRef.current = volumeSeries;
+
+    const rsiChartOptions = {
+      ...chartOptions,
+      handleScale: {
+        axisPressedMouseMove: { time: true, price: false },
+        mouseWheel: true,
+        pinch: true,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      rightPriceScale: {
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        autoScale: true,
+      },
+      timeScale: {
+        ...chartOptions.timeScale,
+        timeVisible: true,
+      }
+    };
+    
+    // Create secondary chart for RSI
+    const rsiChart = createChart(rsiContainerRef.current, rsiChartOptions);
+    rsiChartInstanceRef.current = rsiChart;
+
+    const rsiSeries = rsiChart.addSeries(LineSeries, {
+      color: '#a855f7', // TradingView purple
+      lineWidth: 2,
+      crosshairMarkerVisible: true,
+      autoscaleInfoProvider: () => ({
+        priceRange: {
+          minValue: 20,
+          maxValue: 80,
+        },
+      }),
+    });
+    rsiSeriesRef.current = rsiSeries;
+
+    rsiSeries.createPriceLine({
+      price: 70,
+      color: 'rgba(255, 255, 255, 0.6)',
+      lineWidth: 2,
+      lineStyle: 2,
+      axisLabelVisible: false,
+    });
+    rsiSeries.createPriceLine({
+      price: 30,
+      color: 'rgba(255, 255, 255, 0.6)',
+      lineWidth: 2,
+      lineStyle: 2,
+      axisLabelVisible: false,
+    });
+
+    // Sync logical range safely
+    let isSyncing = false;
+    
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (range && !isSyncing) {
+        isSyncing = true;
+        try {
+          rsiChart.timeScale().setVisibleLogicalRange(range);
+        } catch (e) {
+          // ignore
+        } finally {
+          isSyncing = false;
+        }
+      }
+    });
+    
+    rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (range && !isSyncing) {
+        isSyncing = true;
+        try {
+          chart.timeScale().setVisibleLogicalRange(range);
+        } catch (e) {
+          // ignore
+        } finally {
+          isSyncing = false;
+        }
+      }
+    });
 
     const loadInitialData = async () => {
       try {
@@ -567,6 +733,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
               color: d.close >= d.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
             }));
             volumeSeriesRef.current.setData(volumeData);
+          }
+          
+          if (rsiSeriesRef.current) {
+            rsiSeriesRef.current.setData(rsiArrayBase);
           }
 
           candleDataRef.current = data;
@@ -641,6 +811,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
             }));
             volumeSeriesRef.current.setData(volumeData);
           }
+          
+          if (rsiSeriesRef.current) {
+            rsiSeriesRef.current.setData(rsiArrayBase);
+          }
 
           candleDataRef.current = data;
           oldestTimeRef.current = data[0].time * 1000;
@@ -701,6 +875,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         const rsiArrBase = getRsiArray(sliceData, 14);
         const rsiArrHTF = getHigherTimeframeRsiArray(sliceData, 14, 4);
         const { bgData } = applySignalsAndBackground(sliceData, rsiArrBase, rsiArrHTF);
+        
+        if (rsiSeriesRef.current && rsiArrBase.length > 0) {
+          rsiSeriesRef.current.update(rsiArrBase[rsiArrBase.length - 1]);
+        }
         
         if (bgData.length > 0) {
             const lastBg = bgData[bgData.length - 1];
@@ -1059,6 +1237,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           chartContainerRef.current.removeEventListener('pointermove', handlePointerMove);
       }
       chart.remove();
+      if (rsiChart) rsiChart.remove();
     };
   }, [currentInterval, symbol]);
 
@@ -1193,6 +1372,10 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
                 color: d.close >= d.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
               }));
               volumeSeriesRef.current.setData(volumeData);
+            }
+            
+            if (rsiSeriesRef.current) {
+              rsiSeriesRef.current.setData(rsiArrayBase);
             }
 
             candleDataRef.current = combinedData;
@@ -1347,6 +1530,26 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         
         <div className="modal-header-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '4px' }}>
           
+          {/* RSI Tool Button */}
+          <button
+            onClick={() => setShowRsi(prev => !prev)}
+            style={{
+              background: showRsi ? 'rgba(244, 63, 94, 0.2)' : 'rgba(255,255,255,0.05)',
+              color: showRsi ? '#f43f5e' : '#94a3b8',
+              border: showRsi ? '1px solid #f43f5e' : '1px solid rgba(255,255,255,0.1)',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: 'bold',
+              display: 'flex', alignItems: 'center', gap: '4px',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            📈 RSI
+          </button>
+
           {/* Volume Tool Button */}
           <button
             onClick={() => setShowVolume(prev => !prev)}
@@ -1494,15 +1697,24 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
             </div>
           </div>
         )}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column' }}>
           {useTradingView ? (
             <TradingViewWidget symbol={tvSymbol} />
           ) : (
             <>
-              <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />
+              <div style={{ height: showRsi ? '75%' : '100%', position: 'relative', transition: 'height 0.3s ease' }}>
+                <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />
+                
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 10, overflow: 'hidden' }}>
+                   {renderOverlays()}
+                </div>
+              </div>
               
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 10, overflow: 'hidden' }}>
-                 {renderOverlays()}
+              {/* RSI Container */}
+              <div style={{ height: showRsi ? '25%' : '0%', overflow: 'hidden', position: 'relative', borderTop: showRsi ? '1px solid #1e293b' : 'none', transition: 'height 0.3s ease' }}>
+                <div style={{ position: 'absolute', top: '16.67%', bottom: '16.67%', left: 0, right: 0, backgroundColor: 'rgba(168, 85, 247, 0.08)', pointerEvents: 'none', zIndex: 0 }} />
+                <div ref={rsiContainerRef} style={{ width: '100%', height: '100%', position: 'relative', zIndex: 1 }} />
+                <div style={{ position: 'absolute', top: '8px', left: '12px', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', pointerEvents: 'none', zIndex: 10 }}>RSI (14)</div>
               </div>
             </>
           )}
