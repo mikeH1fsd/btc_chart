@@ -1316,16 +1316,16 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
   }, [showEma200]);
 
   useEffect(() => {
-    if (ema25_1HSeriesRef.current) ema25_1HSeriesRef.current.applyOptions({ visible: showEma25_1H && interval !== '1h' });
-  }, [showEma25_1H, interval]);
+    if (ema25_1HSeriesRef.current) ema25_1HSeriesRef.current.applyOptions({ visible: showEma25_1H && currentInterval !== '1h' && currentInterval !== '1d' && currentInterval !== '4h' });
+  }, [showEma25_1H, currentInterval]);
 
   useEffect(() => {
-    if (ema200_1HSeriesRef.current) ema200_1HSeriesRef.current.applyOptions({ visible: showEma200_1H && interval !== '1h' });
-  }, [showEma200_1H, interval]);
+    if (ema200_1HSeriesRef.current) ema200_1HSeriesRef.current.applyOptions({ visible: showEma200_1H && currentInterval !== '1h' && currentInterval !== '1d' && currentInterval !== '4h' });
+  }, [showEma200_1H, currentInterval]);
 
   useEffect(() => {
-    if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.applyOptions({ visible: showEma200_4H });
-  }, [showEma200_4H]);
+    if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.applyOptions({ visible: showEma200_4H && currentInterval !== '4h' && currentInterval !== '1d' });
+  }, [showEma200_4H, currentInterval]);
 
   useEffect(() => {
     if (bgSeriesRef.current) bgSeriesRef.current.applyOptions({ visible: showBg });
