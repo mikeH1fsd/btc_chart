@@ -11,7 +11,7 @@ import TrendingCoinsDashboard from './TrendingCoinsDashboard';
 import VnStockDashboard from './VnStockDashboard';
 import AIChatDashboard from './AIChatDashboard';
 import SmartMoneyRadar from './SmartMoneyRadar';
-import SentimentDashboard from './SentimentDashboard';
+import EmaRadarDashboard from './EmaRadarDashboard';
 
 const INITIAL_CHARTS = [
   { id: 'usdhkd', title: 'USD / HKD', currency: 'HKD', source: 'Frankfurter API', color: '#38bdf8', historyTitle: 'USD/HKD Exchange Rate History', timeframe: '10 Years' },
@@ -41,7 +41,7 @@ function App() {
   const [showVnStock, setShowVnStock] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showRadar, setShowRadar] = useState(false);
-  const [showSentiment, setShowSentiment] = useState(false);
+  const [showEmaRadar, setShowEmaRadar] = useState(false);
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
@@ -114,15 +114,19 @@ function App() {
       <SmartMoneyRadar 
         onClose={() => setShowRadar(false)} 
         onViewChart={(config) => {
-          setShowRadar(false);
           setBtcDetailConfig(config);
         }} 
       />
     );
   }
 
-  if (showSentiment) {
-    return <SentimentDashboard onClose={() => setShowSentiment(false)} />;
+  if (showEmaRadar) {
+    return <EmaRadarDashboard 
+      onClose={() => setShowEmaRadar(false)} 
+      onViewChart={(config) => {
+        setBtcDetailConfig(config);
+      }}
+    />;
   }
 
   return (
@@ -250,7 +254,7 @@ function App() {
           </button>
           
           <button 
-            onClick={() => setShowSentiment(true)}
+            onClick={() => setShowEmaRadar(true)}
             style={{
               padding: '10px 20px',
               background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
@@ -269,7 +273,7 @@ function App() {
             onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(14, 165, 233, 0.4)'; }}
             onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(14, 165, 233, 0.3)'; }}
           >
-            <span>🧠</span> Phân Tích Tâm Lý (AI)
+            <span>📡</span> Radar Chỉ Báo
           </button>
           
           <style dangerouslySetInnerHTML={{__html: `

@@ -302,6 +302,19 @@ const Us100DetailChart = ({ onClose }) => {
         timeVisible: true,
         secondsVisible: false,
       },
+      localization: {
+        timeFormatter: (timestamp) => {
+          const date = new Date(timestamp * 1000);
+          return date.toLocaleString('vi-VN', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      },
       autoSize: true, // Automatically resize with container
     };
 

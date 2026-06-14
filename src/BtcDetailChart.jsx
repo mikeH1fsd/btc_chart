@@ -22,7 +22,7 @@ const TradingViewWidget = ({ symbol }) => {
         "autosize": true,
         "symbol": "${symbol}",
         "interval": "D",
-        "timezone": "Etc/UTC",
+        "timezone": "Asia/Ho_Chi_Minh",
         "theme": "dark",
         "style": "1",
         "locale": "en",
@@ -81,6 +81,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
 
   const [measureActive, setMeasureActive] = useState(false);
   const measureActiveRef = useRef(false);
+  const [showVolume, setShowVolume] = useState(true);
   const measureStepRef = useRef(0); // 0: inactive, 1: ready, 2: measuring, 3: locked
   const measureStartRef = useRef(null);
   const measureCurrentRef = useRef(null);
@@ -120,6 +121,13 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
   const ema200_1HSeriesRef = useRef(null);
   const ema200_4HSeriesRef = useRef(null);
   const bgSeriesRef = useRef(null);
+  const volumeSeriesRef = useRef(null);
+
+  useEffect(() => {
+    if (volumeSeriesRef.current) {
+      volumeSeriesRef.current.applyOptions({ visible: showVolume });
+    }
+  }, [showVolume]);
 
   const getMultiplier = (targetMinutes) => {
     let currentMinutes = 60;
@@ -336,6 +344,7 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
             high: parseFloat(d[2]),
             low: parseFloat(d[3]),
             close: parseFloat(d[4]),
+            volume: parseFloat(d[5]),
           }));
           allData = [...formattedData, ...allData];
         }
@@ -391,6 +400,19 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         borderColor: 'rgba(255, 255, 255, 0.2)',
         timeVisible: true,
         secondsVisible: false,
+      },
+      localization: {
+        timeFormatter: (timestamp) => {
+          const date = new Date(timestamp * 1000);
+          return date.toLocaleString('vi-VN', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
       },
       autoSize: true, // Automatically resize with container
     };
@@ -485,11 +507,27 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
       color: '#a855f7', // purple
       lineWidth: 2,
       crosshairMarkerVisible: true,
-      lastValueVisible: true,
+      priceScaleId: 'left',
+      lastValueVisible: false,
       priceLineVisible: false,
-      priceScaleId: 'right',
     });
     ema200_4HSeriesRef.current = ema200_4HSeries;
+
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      priceFormat: {
+        type: 'volume',
+      },
+      priceScaleId: 'volume',
+      visible: showVolume,
+    });
+    
+    chart.priceScale('volume').applyOptions({
+      scaleMargins: {
+        top: 0.8,
+        bottom: 0,
+      },
+    });
+    volumeSeriesRef.current = volumeSeries;
 
     const loadInitialData = async () => {
       try {
@@ -522,11 +560,20 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           }
           if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.setData(getEmaArray(data, 200 * getMultiplier(240)));
           
+          if (volumeSeriesRef.current) {
+            const volumeData = data.map(d => ({
+              time: d.time,
+              value: d.volume,
+              color: d.close >= d.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+            }));
+            volumeSeriesRef.current.setData(volumeData);
+          }
+
           candleDataRef.current = data;
           oldestTimeRef.current = data[0].time * 1000;
         } else {
           setUseTradingView(true);
-          setTvSymbol(`MEXC:${symbol}`);
+          setTvSymbol(`BINANCE:${symbol}`);
         }
       } catch (err) {
         console.error('Initialization error:', err);
@@ -586,6 +633,15 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           }
           if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.setData(getEmaArray(data, 200 * getMultiplier(240)));
           
+          if (volumeSeriesRef.current) {
+            const volumeData = data.map(d => ({
+              time: d.time,
+              value: d.volume,
+              color: d.close >= d.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+            }));
+            volumeSeriesRef.current.setData(volumeData);
+          }
+
           candleDataRef.current = data;
           oldestTimeRef.current = data[0].time * 1000;
         }
@@ -615,11 +671,12 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
           high: parseFloat(d[2]),
           low: parseFloat(d[3]),
           close: parseFloat(d[4]),
+          volume: parseFloat(d[5]),
         };
         
         const currentLast = candleDataRef.current[candleDataRef.current.length - 1];
-        if (currentLast && currentLast.time === liveCandle.time && currentLast.close === liveCandle.close) {
-           return; // No price change, skip heavy calculations
+        if (currentLast && currentLast.time === liveCandle.time && currentLast.close === liveCandle.close && currentLast.volume === liveCandle.volume) {
+           return; // No change, skip heavy calculations
         }
         
         const currentData = candleDataRef.current;
@@ -630,6 +687,13 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         }
         
         candlestickSeries.update(liveCandle);
+        if (volumeSeriesRef.current) {
+          volumeSeriesRef.current.update({
+            time: liveCandle.time,
+            value: liveCandle.volume,
+            color: liveCandle.close >= liveCandle.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+          });
+        }
         
         // Performance Fix: Only calculate indicators on the last 500 candles instead of 43,000!
         const sliceData = currentData.slice(-500);
@@ -1122,6 +1186,15 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
             }
             if (ema200_4HSeriesRef.current) ema200_4HSeriesRef.current.setData(getEmaArray(combinedData, 200 * getMultiplier(240)));
             
+            if (volumeSeriesRef.current) {
+              const volumeData = combinedData.map(d => ({
+                time: d.time,
+                value: d.volume,
+                color: d.close >= d.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+              }));
+              volumeSeriesRef.current.setData(volumeData);
+            }
+
             candleDataRef.current = combinedData;
             oldestTimeRef.current = combinedData[0].time * 1000;
             setIsExtended(true);
@@ -1274,6 +1347,26 @@ const BtcDetailChart = ({ onClose, interval = '1h', years = 5, symbol = 'BTCUSDT
         
         <div className="modal-header-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '4px' }}>
           
+          {/* Volume Tool Button */}
+          <button
+            onClick={() => setShowVolume(prev => !prev)}
+            style={{
+              background: showVolume ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
+              color: showVolume ? '#38bdf8' : '#94a3b8',
+              border: showVolume ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: 'bold',
+              display: 'flex', alignItems: 'center', gap: '4px',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            📊 VOL
+          </button>
+
           {/* Measure Tool Button */}
           <button
             onClick={() => setMeasureActive(prev => (prev === 2 ? false : !prev))}
